@@ -1,0 +1,30 @@
+# Editores
+../tmp-locker1/.idea/
+.vscode/
+.atom/
+*.sublime-project
+
+# Dependencias y Logs
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Configuración
+.env*
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Frontend (Next.js)
+frontend/build/
+frontend/dist/
+frontend/.cache/
+frontend/.next/
+frontend/out/
+
+# Backend (Node.js)
+backend/*/node_modules/
+backend/*/dist/
