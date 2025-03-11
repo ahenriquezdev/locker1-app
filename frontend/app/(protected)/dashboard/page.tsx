@@ -28,8 +28,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useSession } from "next-auth/react";
 
 export default function DashboardPage() {
+  const { data: session } = useSession();
   const [passwordsVisible, setPasswordsVisible] = useState(false);
 
   const securityScore = 75;

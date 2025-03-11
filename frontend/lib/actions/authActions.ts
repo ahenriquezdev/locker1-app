@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { signIn } from "next-auth/react";
+import { ApiResponseType } from "@/lib/types";
 
 const signInSchema = z.object({
   email: z.string().email({ message: "Invalid email" }).trim(),
@@ -8,48 +10,53 @@ const signInSchema = z.object({
     .trim(),
 });
 
-export async function signInWithCredentials(credentials: any) {
+export async function signInWithCredentials(
+  prevState: ApiResponseType,
+  formData: FormData,
+): Promise<ApiResponseType> {
+  const parsedData = signInSchema.safeParse(Object.fromEntries(formData));
+
+  if (!parsedData.success) {
+    return {
+      success: false,
+      message: "Validation error",
+      errors: parsedData.error.issues,
+    };
+  }
+
+  const { email, password } = parsedData.data;
+
   try {
-    console.log("signInWithCredentials called with:", credentials);
-    const parsedData = signInSchema.safeParse(credentials);
-
-    if (!parsedData.success) {
-      console.error(
-        "Zod validation error:",
-        parsedData.error.flatten().fieldErrors,
-      );
-      return {
-        errors: parsedData.error.flatten().fieldErrors,
-      };
-    }
-
-    const { email, password } = parsedData.data;
-    console.log("Parsed data:", { email, password });
-
     const response = await fetch("http://localhost:5000/api/v1/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
-      credentials: "include",
     });
 
-    console.log("API response status:", response.status);
+    const loginResponse = await response.json();
 
-    if (response.ok) {
-      const user = await response.json();
-
-      console.log("User from API:", user);
-      if (user && user.success) {
-        return user.data;
-      }
-
-      console.error("Invalid user data received from API");
-      return null;
+    if (!loginResponse || !loginResponse.success) {
+      return {
+        success: false,
+        message: loginResponse.message,
+      };
     }
-    console.error("API response not ok");
-    return null;
-  } catch (error: any) {
-    console.error("Error validating credentials:", error);
-    return null;
+
+    await signIn("credentials", {
+      ...loginResponse.data,
+      redirect: true,
+      redirectTo: "/dashboard",
+    });
+
+    return {
+      success: true,
+      message: "Login successful",
+    };
+  } catch (error) {
+    console.log("Error: ", error);
+    return {
+      success: false,
+      message: `Authentication error: ${error}`,
+    };
   }
 }

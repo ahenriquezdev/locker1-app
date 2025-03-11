@@ -1,23 +1,18 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
-import { signInWithCredentials } from "@/lib/actions/authActions";
 import CredentialsProvider from "next-auth/providers/credentials";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-  debug: true,
   providers: [
     CredentialsProvider({
       async authorize(credentials) {
-        try {
-          console.log("Credentials received:", credentials);
-          const user = await signInWithCredentials(credentials);
-
-          console.log("User received from signInWithCredentials:", user);
-
-          return user;
-        } catch (error) {
-          console.error("Error validating credentials:", error);
+        if (!credentials) {
+          return null;
         }
+        console.log("credentials from credentials provider: ", credentials);
+        return {
+          ...credentials,
+        };
       },
     }),
     GoogleProvider({
@@ -25,27 +20,27 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
-  // secret: process.env.AUTH_SECRET,
+  pages: {
+    signIn: "/login",
+  },
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.user = { ...user, name: user.full_name };
+    async jwt({ token, account, profile, user }) {
+      if (account) {
+        token.accessToken = account.access_token;
+        token.id = account.providerAccountId;
       }
-      return {
-        email: token.email,
-        sub: token.sub,
-        user: token.user,
-      };
+      if (user && user.token) {
+        token.accessToken = user.token;
+      }
+      if (profile) {
+        token.picture = profile.picture;
+      }
+      return token;
     },
     async session({ session, token }) {
-      session.user = {
-        id: token.sub,
-        name: token.user.name,
-        email: token.email,
-      };
+      session.user.image = token.picture || session.user.image;
+      session.user.accessToken = token.accessToken || null;
       return session;
     },
   },
 });
-
-// export { handler as GET, handler as POST };

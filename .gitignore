@@ -1,5 +1,5 @@
 # Editores
-../tmp-locker1/.idea/
+.idea/
 .vscode/
 .atom/
 *.sublime-project
@@ -18,7 +18,6 @@ yarn-error.log*
 Thumbs.db
 desktop.ini
 
-# Frontend (Next.js)
 frontend/build/
 frontend/dist/
 frontend/.cache/
@@ -26,5 +25,9 @@ frontend/.next/
 frontend/out/
 
 # Backend (Node.js)
-backend/*/node_modules/
-backend/*/dist/
+backend/api-auth/node_modules/
+backend/api-auth/dist/
+backend/api-core/node_modules/
+backend/api-core/dist/
+backend/api-gateway/node_modules/
+backend/api-gateway/dist/

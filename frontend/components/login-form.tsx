@@ -1,37 +1,32 @@
 "use client";
 
 import { useActionState, useState } from "react";
-
+import { signInWithCredentials } from "@/lib/actions/authActions";
+import { signIn } from "next-auth/react";
+import { ApiResponseType } from "@/lib/types";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 
-import { signIn } from "next-auth/react";
-
 export default function LoginForm() {
+  const [state, handleSignIn, isPending] = useActionState<ApiResponseType>(
+    signInWithCredentials,
+    { success: false, message: "", errors: [] },
+  );
+  const { success = false, message = "", errors = [] } = state;
   const [rememberMe, setRememberMe] = useState(false);
 
-  const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
-
-    console.log("Enviando credenciales:", { email, password });
-    await signIn("credentials", {
-      email,
-      password,
-      rememberMe,
+  const handleGoogleSignIn = async () => {
+    await signIn("google", {
       redirect: true,
-      callbackUrl: "/dashboard",
+      redirectTo: "/dashboard",
     });
   };
 
-  const handleGoogleSignIn = () => {};
   return (
-    <form onSubmit={handleSignIn} className="space-y-4 form-container">
+    <form action={handleSignIn} className="space-y-4 form-container">
       <div className="space-y-2">
         <Label htmlFor="email">Correo electrónico</Label>
         <Input
@@ -79,8 +74,8 @@ export default function LoginForm() {
         </label>
       </div>
 
-      <Button type="submit" className="w-full">
-        Iniciar sesión
+      <Button type="submit" className="w-full" disabled={isPending}>
+        {isPending ? "Iniciando sesión..." : "Iniciar sesión"}
       </Button>
 
       <div className="relative">
@@ -120,6 +115,16 @@ export default function LoginForm() {
         </svg>
         Iniciar sesión con Google
       </Button>
+      {!success && <p style={{ color: "red" }}>{message}</p>}
+      {errors && (
+        <ul>
+          {errors.map((err, index) => (
+            <li key={index} style={{ color: "orange" }}>
+              {err.message}
+            </li>
+          ))}
+        </ul>
+      )}
     </form>
   );
 }

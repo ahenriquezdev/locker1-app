@@ -88,7 +88,10 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full">
                   <Image
-                    src="https://randomuser.me/api/portraits/men/5.jpg"
+                    src={
+                      session?.user?.image ||
+                      "https://randomuser.me/api/portraits/men/5.jpg"
+                    }
                     alt="Avatar"
                     width={32}
                     height={32}
@@ -101,7 +104,10 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
                 <div className="flex items-center gap-2 p-2">
                   <div className="rounded-full overflow-hidden">
                     <Image
-                      src="https://randomuser.me/api/portraits/men/5.jpg"
+                      src={
+                        session?.user?.image ||
+                        "https://randomuser.me/api/portraits/men/5.jpg"
+                      }
                       alt="Avatar"
                       width={40}
                       height={40}
