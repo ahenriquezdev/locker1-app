@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { auth, signOut } from "@/lib/auth";
 
-export default function middleware(req: NextRequest) {
-  const sessionToken = req.cookies.get("authjs.session-token")?.value;
+export default async function middleware(req: NextRequest) {
+  if (req.nextUrl.pathname.startsWith("/api/auth/")) {
+    return NextResponse.next();
+  }
+
+  const session = await auth();
 
   if (
-    !sessionToken &&
+    !session &&
     !req.nextUrl.pathname.startsWith("/login") &&
     !req.nextUrl.pathname.startsWith("/signup")
   ) {
@@ -13,12 +18,18 @@ export default function middleware(req: NextRequest) {
   }
 
   if (
-    sessionToken &&
-    (req.nextUrl.pathname.startsWith("/login") ||
-      req.nextUrl.pathname.startsWith("/signup") ||
-      req.nextUrl.pathname === "/")
+    session &&
+    session.expiresAt &&
+    session.expiresAt < Math.floor(Date.now() / 1000)
   ) {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
+    const response = NextResponse.redirect(new URL("/login", req.url));
+    response.cookies.set("authjs.session-token", "", {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      expires: new Date(0),
+    });
+    return response;
   }
 
   return NextResponse.next();

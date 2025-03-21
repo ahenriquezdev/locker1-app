@@ -195,7 +195,7 @@ export default function DashboardPage() {
                     fortalecidas
                   </p>
                 </div>
-                <Link href="/claves?filter=weak">
+                <Link href="/passwords?filter=weak">
                   <Button size="sm">Revisar</Button>
                 </Link>
               </div>

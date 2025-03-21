@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 
 import "./globals.css";
 import { PropsWithChildren } from "react";
+import { Toaster } from "@/components/ui/sonner";
 
 export const metadata: Metadata = {
   title: "Locker1 | Most secure password locker",
@@ -13,9 +14,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: PropsWithChildren) {
   return (
     <html lang="en">
-      <SessionProvider>
-        <body className="overflow-y-scroll">{children}</body>
-      </SessionProvider>
+      <body className="overflow-y-scroll">
+        <SessionProvider>
+          {children}
+          <Toaster richColors theme="light" />
+        </SessionProvider>
+      </body>
     </html>
   );
 }

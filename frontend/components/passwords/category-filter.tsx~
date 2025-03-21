@@ -1,0 +1,81 @@
+// src/components/passwords/CategoryFilter.tsx
+"use client";
+
+import { useRouter, useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
+interface CategoryFilterProps {
+  selectedCategory: string;
+}
+
+export default function CategoryFilter({ selectedCategory }: CategoryFilterProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const handleCategoryChange = (category: string) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("category", category);
+    router.push(`?${params.toString()}`);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Categorías</CardTitle>
+        <CardDescription>
+          Selecciona una categoría para ver sus claves
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ScrollArea className="h-[500px]">
+          <div className="space-y-4">
+            <div>
+              <h3 className="font-semibold mb-2">Claves Propias</h3>
+              <Button
+                variant={selectedCategory === "propias" ? "default" : "ghost"}
+                className="w-full justify-start"
+                onClick={() => handleCategoryChange("propias")}
+              >
+                <span>Todas las claves propias</span>
+              </Button>
+              <Button
+                variant={selectedCategory === "sin-compartir" ? "default" : "ghost"}
+                className="w-full justify-start"
+                onClick={() => handleCategoryChange("sin-compartir")}
+              >
+                <span>Sin compartir</span>
+              </Button>
+              <Button
+                variant={selectedCategory === "compartidas-grupos" ? "default" : "ghost"}
+                className="w-full justify-start"
+                onClick={() => handleCategoryChange("compartidas-grupos")}
+              >
+                <span>Compartidas con grupos</span>
+              </Button>
+            </div>
+            <Separator />
+            <div>
+              <h3 className="font-semibold mb-2">Claves Externas</h3>
+              <Button
+                variant={selectedCategory === "externas" ? "default" : "ghost"}
+                className="w-full justify-start"
+                onClick={() => handleCategoryChange("externas")}
+              >
+                <span>Compartidas por otros grupos</span>
+              </Button>
+            </div>
+          </div>
+        </ScrollArea>
+      </CardContent>
+    </Card>
+  );
+}

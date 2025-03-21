@@ -1,22 +1,36 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import React, { useActionState, useEffect, useState } from "react";
 import { signInWithCredentials } from "@/lib/actions/authActions";
 import { signIn } from "next-auth/react";
-import { ApiResponseType } from "@/lib/types";
+import { ApiResponse } from "@/lib/types";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export default function LoginForm() {
-  const [state, handleSignIn, isPending] = useActionState<ApiResponseType>(
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
+
+  const initialState: ApiResponse.Response = {
+    success: false,
+    message: "",
+    data: null,
+    errors: [],
+    display: false,
+  };
+
+  const [state, formAction, isPending] = useActionState<ApiResponse.Response>(
     signInWithCredentials,
-    { success: false, message: "", errors: [] },
+    initialState,
   );
-  const { success = false, message = "", errors = [] } = state;
-  const [rememberMe, setRememberMe] = useState(false);
+
+  const { success, message, errors, display = false } = state;
+  const [showToast, setShowToast] = useState(false);
 
   const handleGoogleSignIn = async () => {
     await signIn("google", {
@@ -25,14 +39,61 @@ export default function LoginForm() {
     });
   };
 
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  useEffect(() => {
+    if (display && (message || errors)) {
+      setShowToast(true);
+    }
+  }, [display, message, errors]);
+
+  useEffect(() => {
+    if (showToast) {
+      toast[success ? "success" : "error"]("Notification received", {
+        description: (
+          <>
+            <p className="mt-1 text-sm">{message}</p>
+            <br />
+            {errors &&
+              errors.length > 0 &&
+              errors.map((item, index) => (
+                <div key={index} className="text-sm">
+                  <dt className="font-semibold text-xs">{item.field}:</dt>
+                  <dd className="ml-4">{item.message}</dd>
+                </div>
+              ))}
+          </>
+        ),
+        duration: 5000,
+        position: "top-right",
+        className: "z-50",
+        onAutoClose: () => {
+          setShowToast(false);
+        },
+      });
+    }
+
+    return () => {
+      setShowToast(false);
+    };
+  }, [showToast, success, message, errors]);
+
   return (
-    <form action={handleSignIn} className="space-y-4 form-container">
+    <form action={formAction} className="space-y-4 form-container">
       <div className="space-y-2">
         <Label htmlFor="email">Correo electrónico</Label>
         <Input
           id="email"
           name="email"
           type="email"
+          value={formData.email}
+          onChange={(e) => handleInputChange(e)}
           placeholder="nombre@ejemplo.com"
           required
           autoComplete="false"
@@ -53,25 +114,12 @@ export default function LoginForm() {
           id="password"
           name="password"
           type="password"
+          value={formData.password}
+          onChange={(e) => handleInputChange(e)}
           required
           autoComplete="false"
           className="input-field"
         />
-      </div>
-
-      <div className="flex items-center space-x-2">
-        <Checkbox
-          id="remember"
-          name="remember"
-          checked={rememberMe}
-          onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-        />
-        <label
-          htmlFor="remember"
-          className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-        >
-          Recordarme por 30 días
-        </label>
       </div>
 
       <Button type="submit" className="w-full" disabled={isPending}>
@@ -115,16 +163,6 @@ export default function LoginForm() {
         </svg>
         Iniciar sesión con Google
       </Button>
-      {!success && <p style={{ color: "red" }}>{message}</p>}
-      {errors && (
-        <ul>
-          {errors.map((err, index) => (
-            <li key={index} style={{ color: "orange" }}>
-              {err.message}
-            </li>
-          ))}
-        </ul>
-      )}
     </form>
   );
 }

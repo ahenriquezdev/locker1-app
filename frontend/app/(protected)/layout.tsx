@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { NotificationsPanel } from "@/components/notifications-panel";
 
+import "./protected.css";
 import logo from "@/public/locker1-logo.svg";
 
 export default function DashboardLayout({ children }: PropsWithChildren) {
@@ -59,7 +60,7 @@ export default function DashboardLayout({ children }: PropsWithChildren) {
                 Grupos
               </Link>
               <Link
-                href="/dashboard/keys"
+                href="/dashboard/passwords"
                 className="text-muted-foreground nav-link"
               >
                 Claves
