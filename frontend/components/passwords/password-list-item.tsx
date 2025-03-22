@@ -47,7 +47,6 @@ export default function PasswordListItem({
   };
 
   const handleUpdatePassword = (passwordData: any) => {
-    // Lógica para actualizar la contraseña (reemplazar con lógica real)
     console.log("Contraseña actualizada:", passwordData);
     setIsEditDrawerOpen(false);
   };

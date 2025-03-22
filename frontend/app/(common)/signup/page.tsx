@@ -19,30 +19,12 @@ export default function SignUpPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
-      // toast({
-      //   title: "Error",
-      //   description: "Las contraseñas no coinciden",
-      //   variant: "destructive",
-      // });
       return;
     }
-    // Aquí normalmente enviarías una solicitud al backend para registrar al usuario
-    // toast({
-    //   title: "Registro exitoso",
-    //   description:
-    //     "Se ha enviado un código de activación a tu correo electrónico.",
-    // });
-    // Redirigir a la página de activación de cuenta
     router.push(`/activar-cuenta?email=${encodeURIComponent(email)}`);
   };
 
-  const handleGoogleSignUp = async () => {
-    // Aquí manejarías el registro con Google
-    // toast({
-    //   title: "Google Sign Up",
-    //   description: "Registrándose con Google...",
-    // });
-  };
+  const handleGoogleSignUp = async () => {};
 
   return (
     <div className="min-h-screen flex">

@@ -1,4 +1,3 @@
-// src/components/passwords/CategorySelector.tsx
 "use client";
 
 import React from "react";

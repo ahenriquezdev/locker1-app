@@ -1,15 +1,11 @@
-// src/components/passwords/PasswordUpdateForm.tsx
 "use client";
 
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Eye, EyeOff, Loader2, Copy } from "lucide-react";
 import { formatRelativeTime } from "@/lib/utils";
-import { Separator } from "@/components/ui/separator";
 
 interface Password {
   id: string;
@@ -28,16 +24,6 @@ interface PasswordViewDetailProps {
   onCancel: () => void;
 }
 
-// "id": "59a9fa28-7795-4c87-b907-68e13c7749ab",
-//   "user_id": "9f367233-214e-4de1-9c96-376c37615c77",
-//   "service": "facebook",
-//   "username": "mark",
-//   "password": "mark123.",
-//   "score": 10,
-//   "strength": "low",
-//   "last_update": "2025-03-19T17:01:53.000Z",
-//   "sharedTeams": []
-
 export default function PasswordViewDetail({
   selectedPassword,
   onCancel,
@@ -54,24 +40,10 @@ export default function PasswordViewDetail({
   } = selectedPassword;
   const [showPassword, setShowPassword] = useState(false);
   const handleCopyToClipboard = (text: string, type: string) => {
-    navigator.clipboard.writeText(text).then(
-      console.log(`${type} copiado exitosamente`),
-
-      //   () => {
-      //     toast({
-      //       title: "Copiado al portapapeles",
-      //       description: `${type} copiado exitosamente`,
-      //     })
-      //   },
-      //   (err) => {
-      //     console.error("Error al copiar: ", err)
-      //   },
-    );
+    navigator.clipboard
+      .writeText(text)
+      .then(console.log(`${type} copiado exitosamente`));
   };
-
-  // const handleClose = () => {
-  //   onCancel();
-  // };
 
   return (
     <div className="p-6">

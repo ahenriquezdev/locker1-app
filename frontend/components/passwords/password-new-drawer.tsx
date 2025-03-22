@@ -1,4 +1,3 @@
-// src/components/passwords/PasswordNewDrawer.tsx
 "use client";
 
 import React, { useState } from "react";

@@ -1,4 +1,3 @@
-// src/components/passwords/SearchBar.tsx
 "use client";
 
 import React, { useState } from "react";

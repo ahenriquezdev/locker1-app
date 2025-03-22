@@ -1,4 +1,3 @@
-// src/components/passwords/GroupSelector.tsx
 "use client";
 
 import React, { useState } from "react";
