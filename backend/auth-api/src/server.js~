@@ -68,5 +68,5 @@ app.get(
 // Test Endpoint
 
 app.listen(PORT, () => {
-  console.log(`Auth API running on  ${PORT}.`);
+  console.log(`Auth API running on  ${PORT}. ${apiRoutes.internal.base}`);
 });
