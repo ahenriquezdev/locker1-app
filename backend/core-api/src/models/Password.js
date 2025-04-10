@@ -24,6 +24,10 @@ const passwordSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    authTag: {
+      type: String,
+      required: true,
+    },
     url: {
       type: String,
       trim: true,
@@ -35,51 +39,15 @@ const passwordSchema = new mongoose.Schema(
       default: 0,
     },
     strength: {
+      type: String,
       enum: ["low", "moderate", "high", "strong"],
       default: "low",
     },
-    // authTag: {
-    //   type: String,
-    //   required: true,
-    // },
-    // notes: {
-    //     type: String,
-    //     trim: true
-    // },
-    // category: {
-    //     type: String,
-    //     trim: true,
-    //     default: 'Uncategorized'
-    // },
-    // favorite: {
-    //     type: Boolean,
-    //     default: false
-    // },
-    // strength: {
-    //     score: {
-    //         type: Number,
-    //         min: 0,
-    //         max: 4,
-    //         default: 0
-    //     },
-    //     feedback: {
-    //         type: String
-    //     }
-    // },
-    // sharedWith: [{
-    //     type: mongoose.Schema.Types.ObjectId,
-    //     ref: 'Group'
-    // }],
-    // lastModified: {
-    //     type: Date,
-    //     default: Date.now
-    // }
   },
   {
     timestamps: true,
     toJSON: {
       transform: function (doc, ret) {
-        // delete ret.passwordHash; // Never send password hash in responses
         ret.id = ret._id;
         delete ret._id;
         delete ret.__v;
@@ -106,17 +74,7 @@ passwordSchema.methods.getPublicFields = function () {
 };
 
 // Compound index for faster queries
-passwordSchema.index({ userId: 1, title: 1 });
-
-// Method to return password data without sensitive information
-// passwordSchema.methods.toJSON = function () {
-//   const password = this.toObject();
-//   delete password.__v;
-//   delete password.encryptedPassword;
-//   delete password.iv;
-//   delete password.authTag;
-//   return password;
-// };
+// passwordSchema.index({ userId: 1, title: 1 });
 
 const Password = mongoose.model("Password", passwordSchema);
 

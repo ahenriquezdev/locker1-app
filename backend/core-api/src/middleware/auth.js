@@ -1,59 +1,24 @@
-const jwt = require("jsonwebtoken");
-const axios = require("axios");
-
-const authenticate = async (req, res, next) => {
-  // console.log('[DEBUG] Auth middleware executing for:', req.method, req.originalUrl);
-
+const authMiddleware = async (req, res, next) => {
   try {
-    // Get token from header
-    const authHeader = req.headers.authorization;
-    console.log("[DEBUG] Auth header:", authHeader ? "Present" : "Missing");
+    const userId = req.get("X-User-ID");
+    const authHeader = req.get("Authorization");
+    const token = authHeader?.startsWith("Bearer ")
+      ? authHeader.split(" ")[1]
+      : null;
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      console.log("[DEBUG] Invalid auth header format");
-      return res.status(401).json({
-        status: "error",
-        message: "Authentication required",
-      });
+    if (!userId || !token) {
+      return res.sendSuccess(401, "Access denied. Missing user credentials.");
     }
 
-    const token = authHeader.split(" ")[1];
-    console.log("[DEBUG] Token extracted");
+    req.user = {
+      userId,
+      token,
+    };
 
-    // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log("[DEBUG] Token verified for user:", decoded.id);
-
-    // Get user data from auth service
-    try {
-      const response = await axios.get(
-        `${process.env.AUTH_SERVICE_URL}/auth/me`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
-
-      // Add user info to request object
-      req.user = {
-        ...decoded,
-        ...response.data.data.user,
-      };
-
-      next();
-    } catch (error) {
-      console.error("Error fetching user data:", error.message);
-      return res.status(401).json({
-        status: "error",
-        message: "Invalid user session",
-      });
-    }
+    next();
   } catch (error) {
-    console.error("[ERROR] Auth middleware error:", error);
-    return res.status(500).json({
-      status: "error",
-      message: "Authentication error",
-    });
+    res.sendError(401, "CO: Error validating identity", error);
   }
 };
 
-module.exports = { authenticate };
+module.exports = authMiddleware;

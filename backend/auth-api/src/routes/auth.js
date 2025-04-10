@@ -4,8 +4,6 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const authMiddleware = require("../middleware/auth");
-const crypto = require("crypto");
-const UserEncryptionKey = require("../models/UserEncryptionKey");
 const mongoose = require("mongoose");
 
 const apiRoutes = require("../config/endpoints");
@@ -15,7 +13,7 @@ const util = require("util");
 const jwtVerifyPromise = util.promisify(jwt.verify);
 
 // [OK] Register new user
-router.post(apiRoutes.internal.auth.register, async (req, res) => {
+router.post(apiRoutes.auth.register, async (req, res) => {
   try {
     const { email, password, fullName } = req.body;
 
@@ -70,7 +68,7 @@ router.post(apiRoutes.internal.auth.register, async (req, res) => {
 });
 
 // [OK] Activate user
-router.get(apiRoutes.internal.auth.activate, async (req, res) => {
+router.get(apiRoutes.auth.activate, async (req, res) => {
   try {
     const tokenId = req.query?.token ?? null;
 
@@ -116,7 +114,7 @@ router.get(apiRoutes.internal.auth.activate, async (req, res) => {
 });
 
 // [OK] Login
-router.post(apiRoutes.internal.auth.login, async (req, res) => {
+router.post(apiRoutes.auth.login, async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -170,9 +168,10 @@ router.post(apiRoutes.internal.auth.login, async (req, res) => {
 });
 
 // [OK] Get current user (protected route)
-router.get(apiRoutes.internal.auth.me, authMiddleware, async (req, res) => {
+router.get(apiRoutes.auth.me, authMiddleware, async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId);
+    const userId = req.user.userId;
+    const user = await User.findById(userId);
     if (!user) {
       return res.sendError(404, "User not found");
     }
@@ -186,7 +185,7 @@ router.get(apiRoutes.internal.auth.me, authMiddleware, async (req, res) => {
 });
 
 // [OK] Validate token
-router.post(apiRoutes.internal.auth.validateToken, async (req, res) => {
+router.post(apiRoutes.auth.validateToken, async (req, res) => {
   try {
     const authHeader = req.get("Authorization");
     const token = authHeader?.startsWith("Bearer ")
@@ -222,153 +221,6 @@ router.post(apiRoutes.internal.auth.validateToken, async (req, res) => {
       return res.sendError(error.statusCode, error.message);
     }
     res.sendError(500, "AU: Token validation failed", error);
-  }
-});
-
-// Store encryption key
-router.post("/encryption-key", authMiddleware, async (req, res) => {
-  try {
-    // Generate a random 32-byte key (256 bits for AES-256)
-    const key = crypto.randomBytes(32);
-    // Generate a random 12-byte IV (96 bits for GCM mode)
-    const iv = crypto.randomBytes(12);
-
-    // Convert to base64 strings
-    const keyBase64 = key.toString("base64");
-    const ivBase64 = iv.toString("base64");
-
-    const userEncryptionKey = await UserEncryptionKey.findOneAndUpdate(
-      { userId: req.user.userId },
-      {
-        key: keyBase64,
-        iv: ivBase64,
-      },
-      { upsert: true, new: true },
-    );
-
-    // Verify the saved data
-    if (!userEncryptionKey || !userEncryptionKey.key || !userEncryptionKey.iv) {
-      throw new Error("Failed to save encryption key");
-    }
-
-    res.json({
-      status: "success",
-      data: {
-        key: keyBase64,
-        iv: ivBase64,
-      },
-    });
-  } catch (error) {
-    console.error("Encryption key generation error:", error);
-    res.status(400).json({
-      status: "error",
-      message: `Failed to generate encryption key: ${error.message}`,
-    });
-  }
-});
-
-// Get encryption key
-router.get("/encryption-key", authMiddleware, async (req, res) => {
-  try {
-    let userEncryptionKey = await UserEncryptionKey.findOne({
-      userId: req.user.userId,
-    });
-
-    if (!userEncryptionKey) {
-      // Generate new key if none exists
-      const key = crypto.randomBytes(32);
-      const iv = crypto.randomBytes(12);
-
-      const keyBase64 = key.toString("base64");
-      const ivBase64 = iv.toString("base64");
-
-      userEncryptionKey = await UserEncryptionKey.create({
-        userId: req.user.userId,
-        key: keyBase64,
-        iv: ivBase64,
-      });
-    }
-
-    // Verify the data
-    if (!userEncryptionKey || !userEncryptionKey.key || !userEncryptionKey.iv) {
-      throw new Error("Invalid encryption key data");
-    }
-
-    res.json({
-      status: "success",
-      data: {
-        key: userEncryptionKey.key,
-        iv: userEncryptionKey.iv,
-      },
-    });
-  } catch (error) {
-    console.error("Encryption key retrieval error:", error);
-    res.status(400).json({
-      status: "error",
-      message: `Failed to retrieve encryption key: ${error.message}`,
-    });
-  }
-});
-
-// Delete encryption key
-router.delete("/encryption-key", authMiddleware, async (req, res) => {
-  try {
-    await UserEncryptionKey.findOneAndDelete({ userId: req.user.userId });
-
-    res.json({
-      status: "success",
-      message: "Encryption key deleted successfully",
-    });
-  } catch (error) {
-    console.error("Encryption key deletion error:", error);
-    res.status(400).json({
-      status: "error",
-      message: error.message,
-    });
-  }
-});
-
-// Get shared encryption key token
-router.post("/shared-key", async (req, res) => {
-  try {
-    const { userId } = req.body;
-
-    if (!userId) {
-      return res.status(400).json({
-        status: "error",
-        message: "User ID is required",
-      });
-    }
-
-    // Get the user's encryption key
-    const encryptionKey = await UserEncryptionKey.findOne({ userId });
-    if (!encryptionKey) {
-      return res.status(404).json({
-        status: "error",
-        message: "Encryption key not found",
-      });
-    }
-
-    // Create a special token that only allows encryption key access
-    const token = jwt.sign(
-      {
-        userId,
-        purpose: "shared-key-access",
-        exp: Math.floor(Date.now() / 1000) + 60 * 5, // 5 minutes expiration
-      },
-      process.env.JWT_SECRET,
-    );
-
-    res.json({
-      status: "success",
-      token,
-    });
-  } catch (error) {
-    console.error("Shared key error:", error);
-    res.status(500).json({
-      status: "error",
-      message: "Failed to generate shared key token",
-    });
   }
 });
 

@@ -13,7 +13,7 @@ const authMiddleware = async (req, res, next) => {
         .json({ message: "No token, authorization denied" });
     }
 
-    const response = await fetch(apiRoutes.remote.authApi.auth.validateToken, {
+    const response = await fetch(apiRoutes.authApi.remote.auth.validateToken, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,

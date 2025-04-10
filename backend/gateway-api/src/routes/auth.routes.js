@@ -4,9 +4,9 @@ const apiRoutes = require("../config/endpoints");
 const authMiddleware = require("../middleware/auth");
 
 // [OK] Get health
-router.get(apiRoutes.internal.authApi.health, async (req, res) => {
+router.get(apiRoutes.authApi.local.health, async (req, res) => {
   try {
-    const response = await fetch(apiRoutes.remote.authApi.health, {
+    const response = await fetch(apiRoutes.authApi.remote.health, {
       method: "GET",
     });
 
@@ -23,9 +23,9 @@ router.get(apiRoutes.internal.authApi.health, async (req, res) => {
 });
 
 // [OK] Register user
-router.post(apiRoutes.internal.authApi.auth.register, async (req, res) => {
+router.post(apiRoutes.authApi.local.auth.register, async (req, res) => {
   try {
-    const response = await fetch(apiRoutes.remote.authApi.auth.register, {
+    const response = await fetch(apiRoutes.authApi.remote.auth.register, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -46,9 +46,9 @@ router.post(apiRoutes.internal.authApi.auth.register, async (req, res) => {
 });
 
 // [OK] Activate user
-router.get(apiRoutes.internal.authApi.auth.activate, async (req, res) => {
+router.get(apiRoutes.authApi.local.auth.activate, async (req, res) => {
   try {
-    const url = new URL(apiRoutes.remote.authApi.auth.activate);
+    const url = new URL(apiRoutes.authApi.remote.auth.activate);
 
     Object.keys(req.query).forEach((key) => {
       url.searchParams.append(key, req.query[key]);
@@ -71,9 +71,9 @@ router.get(apiRoutes.internal.authApi.auth.activate, async (req, res) => {
 });
 
 // [OK] Login user
-router.post(apiRoutes.internal.authApi.auth.login, async (req, res) => {
+router.post(apiRoutes.authApi.local.auth.login, async (req, res) => {
   try {
-    const response = await fetch(apiRoutes.remote.authApi.auth.login, {
+    const response = await fetch(apiRoutes.authApi.remote.auth.login, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -95,11 +95,11 @@ router.post(apiRoutes.internal.authApi.auth.login, async (req, res) => {
 
 // [] Get current user
 router.get(
-  apiRoutes.internal.authApi.auth.me,
+  apiRoutes.authApi.local.auth.me,
   authMiddleware,
   async (req, res) => {
     try {
-      const response = await fetch(apiRoutes.remote.authApi.auth.me, {
+      const response = await fetch(apiRoutes.authApi.remote.auth.me, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",

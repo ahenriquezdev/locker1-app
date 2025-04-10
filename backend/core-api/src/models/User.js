@@ -20,7 +20,7 @@ const userSchema = new mongoose.Schema(
     },
     isActive: {
       type: Boolean,
-      default: true, // Changed from requirement since we don't need email confirmation
+      default: true,
     },
     securityScore: {
       type: Number,
@@ -34,10 +34,9 @@ const userSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true, // This will add createdAt and updatedAt fields automatically
+    timestamps: true,
     toJSON: {
       transform: function (doc, ret) {
-        // delete ret.passwordHash; // Never send password hash in responses
         ret.id = ret._id;
         delete ret._id;
         delete ret.__v;
