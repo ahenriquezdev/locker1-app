@@ -23,6 +23,31 @@ router.get(apiRoutes.coreApi.local.health, async (req, res) => {
 });
 
 // [] get all passwords
+router.get(
+  apiRoutes.coreApi.local.password.getAll,
+  authMiddleware,
+  async (req, res) => {
+    try {
+      const response = await fetch(apiRoutes.coreApi.remote.password.getAll, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-Id": req.user.userId,
+          Authorization: `Bearer ${req.user.token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        return res.status(response.status).send(data);
+      }
+
+      res.status(response.status).send(data);
+    } catch (error) {
+      res.sendError(500, "GW: Error getting passwords", error);
+    }
+  },
+);
 
 // [OK] get password by id
 router.get(
