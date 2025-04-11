@@ -12,6 +12,7 @@ import PasswordListItem from "@/components/passwords/password-list-item";
 import GroupSelector from "@/components/passwords/group-selector";
 import SearchBar from "@/components/passwords/search-bar";
 import { getPasswords } from "@/lib/actions/passwordActions";
+import { PasswordSearchParams } from "@/lib/types";
 
 export default async function PasswordListServer({
   searchParams,

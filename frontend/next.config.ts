@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   /* config options here */
   serverRuntimeConfig: {
-    myCustomPort: 3001,
+    myCustomPort: 3000,
   },
   images: {
     remotePatterns: [

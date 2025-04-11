@@ -1,14 +1,24 @@
-const API_URL = "http://localhost:5000/api/v1";
+const GATEWAY_SERVICE_URL = process.env.GATEWAY_SERVICE_URL;
 
-const remoteApi = {
-  base: API_URL,
-  auth: {
-    login: `${API_URL}/auth/login`,
-  },
-  passwords: {
-    getAll: `${API_URL}/passwords`,
-    create: `${API_URL}/password/create`,
-  },
+const apiRoutes = {
+  remote: (() => {
+    const apiUrl = `${GATEWAY_SERVICE_URL}/api/v1`;
+    return {
+      base: apiUrl,
+      docs: `${apiUrl}/docs`,
+      health: `${apiUrl}/health`,
+      auth: {
+        register: `${apiUrl}/auth-api/auth/register`,
+        login: `${apiUrl}/auth-api/auth/login`,
+      },
+      password: {
+        getAll: `${apiUrl}/core-api/passwords`,
+        getById: `${apiUrl}/core-api/password/:id`,
+        create: `${apiUrl}/core-api/password`,
+        updateOrDelete: `${apiUrl}/core-api/password/:id`,
+      },
+    };
+  })(),
 };
 
-export default remoteApi;
+export default apiRoutes;

@@ -1,11 +1,10 @@
 "use server";
 
 import { z } from "zod";
-import { signIn } from "next-auth/react";
 import { ApiResponse } from "@/lib/types";
 import { AuthError } from "next-auth";
-import { apiFetch } from "@/lib/api";
-import remoteApi from "@/lib/endpoints";
+import { apiPost } from "@/lib/api-helper";
+import apiRoutes from "@/lib/endpoints";
 
 const signInSchema = z.object({
   email: z.string().email({ message: "Invalid email" }).trim(),
@@ -54,12 +53,9 @@ export async function signInWithCredentials(
   }
 
   try {
-    const apiResponse = await apiFetch<ApiResponse.Response>(
-      remoteApi.auth.login,
-      {
-        method: "POST",
-        body: JSON.stringify(formattedData),
-      },
+    const apiResponse = await apiPost<ApiResponse.Response>(
+      apiRoutes.remote.auth.login,
+      formattedData,
     );
 
     if (!apiResponse || !apiResponse.success) {
@@ -70,26 +66,28 @@ export async function signInWithCredentials(
       };
     }
 
-    await signIn("credentials", {
-      ...apiResponse.data,
-      redirect: true,
-      redirectTo: "/dashboard",
-    });
-
     return {
       success: true,
-      message: "Login successful",
+      message:
+        apiResponse.message === "Login successful"
+          ? "Login successful. Redirecting..."
+          : apiResponse.message,
+      data: apiResponse.data,
+      display: true,
     };
   } catch (error: any) {
     console.error("Login error:", error);
 
     let message = "An unexpected error occurred. Please try again later.";
 
-    if (error instanceof TypeError && error.message === "Failed to fetch") {
-      message =
-        "Unable to connect to the server. Please check your network connection.";
+    if (error?.message === "Service unavailable") {
+      message = "The service is currently unavailable.";
     } else if (error instanceof AuthError) {
       message = "Authentication failed. Please check your credentials.";
+    } else if (error.message.startsWith("API Error")) {
+      message = `Api error: ${error.message.split(": ")[1] || "Please try again later.."}`;
+    } else if (error.message.startsWith("Unexpected API Error")) {
+      message = `Unexpected api error: ${error.message.split(": ")[1] || "Please try again later.."}`;
     }
 
     return {

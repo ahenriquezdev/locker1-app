@@ -2,15 +2,19 @@ import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 
-import jwt from "jsonwebtoken";
-
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
     CredentialsProvider({
       async authorize(credentials) {
-        return {
-          ...credentials,
-        };
+        if (credentials?.id && credentials?.email && credentials?.accessToken) {
+          return {
+            id: credentials.id,
+            email: credentials.email,
+            name: credentials.fullName,
+            accessToken: credentials.accessToken,
+          };
+        }
+        return null;
       },
     }),
     GoogleProvider({
@@ -34,21 +38,25 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
   callbacks: {
     async jwt({ token, account, profile, user }) {
-      if (user) {
+      if (user?.id) {
         token.id = user.id;
-        token.accessToken = user.token;
-
-        const decoded = jwt.decode(user.token) as { exp?: number };
-        if (decoded?.exp) {
-          token.expiresAt = decoded.exp;
-        }
       }
+      if (user?.accessToken) {
+        token.accessToken = user.accessToken;
+      }
+      if (account?.access_token) {
+        token.accessToken = account.access_token;
+      }
+
       return token;
     },
     async session({ session, token }) {
-      session.user.id = token.id;
-      session.user.accessToken = token.accessToken;
-      session.expiresAt = token.expiresAt;
+      if (session?.user && token?.id) {
+        session.user.id = token.id;
+      }
+      if (token?.accessToken) {
+        session.accessToken = token.accessToken;
+      }
       return session;
     },
   },
