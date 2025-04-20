@@ -30,9 +30,6 @@ const userEncryptionKeySchema = new mongoose.Schema(
   },
 );
 
-// Index for faster queries
-// userEncryptionKeySchema.index({ userId: 1 });
-
 const UserEncryptionKey = mongoose.model(
   "UserEncryptionKey",
   userEncryptionKeySchema,

@@ -1,17 +1,36 @@
 const express = require("express");
 const router = express.Router();
 const apiRoutes = require("../config/endpoints");
-const Password = require("../models/Password");
-const SharedPassword = require("../models/SharedPassword");
-const User = require("../models/User");
+const { User, Password, PasswordShare } = require("../models/index");
 const UserEncryptionKey = require("../models/UserEncryptionKey");
 
 const encryptionUtils = require("../utils/encryption");
 
 const authMiddleware = require("../middleware/auth");
 
-// [] get all passwords
-router.get(apiRoutes.password.getAll, async (req, res) => {});
+// [OK] get all passwords
+router.get(apiRoutes.password.getAll, authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { category = "all", page = 1 } = req.query;
+    const limit = 10;
+    const skip = (parseInt(page) - 1) * limit;
+
+    const { results, total } = await Password.getByCategory(
+      userId,
+      category,
+      skip,
+      limit,
+    );
+
+    return res.sendSuccess(200, "Passwords retrieved successfully", {
+      results,
+      meta: { total, page, limit },
+    });
+  } catch (error) {
+    res.sendError(500, "CO: Get all passwords failed", error);
+  }
+});
 
 // [OK] get password by id
 router.get(apiRoutes.password.getById, authMiddleware, async (req, res) => {
@@ -50,11 +69,22 @@ router.get(apiRoutes.password.getById, authMiddleware, async (req, res) => {
 
     passwordEntry.password = decryptedPassword;
 
-    return res.sendSuccess(
-      200,
-      "Password found successfully",
-      passwordEntry.getPublicFields(),
-    );
+    return res.sendSuccess(200, "Password found successfully", {
+      password: {
+        id: passwordEntry._id,
+        service: passwordEntry.service,
+        username: passwordEntry.username,
+        password: passwordEntry.password,
+        url: passwordEntry.url,
+        score: passwordEntry.score,
+        strength: passwordEntry.strength,
+        isShared: passwordEntry.isShared,
+        sharedWithUser: passwordEntry.sharedWithUser,
+        sharedFromGroup: passwordEntry.sharedFromGroup,
+        createdAt: passwordEntry.createdAt,
+        updatedAt: passwordEntry.updatedAt,
+      },
+    });
   } catch (error) {
     res.sendError(500, "CO: Get password failed", error);
   }
@@ -65,6 +95,19 @@ router.post(apiRoutes.password.create, authMiddleware, async (req, res) => {
   try {
     const userId = req.user.userId;
     const { service, username, password, url, score, strength } = req.body;
+
+    const existingPassword = await Password.findOne({
+      userId,
+      service,
+      username,
+    });
+
+    if (existingPassword) {
+      return res.sendError(
+        400,
+        "A password for this service and username already exists. Please update the existing password or use a different username.",
+      );
+    }
 
     let userEncryptionKey = await UserEncryptionKey.findOne({
       userId,
@@ -98,6 +141,7 @@ router.post(apiRoutes.password.create, authMiddleware, async (req, res) => {
       userId,
       userEncryptionKey.salt,
     );
+
     const {
       iv: passwordIv,
       encrypted: encryptedPassword,
@@ -115,22 +159,144 @@ router.post(apiRoutes.password.create, authMiddleware, async (req, res) => {
       score,
       strength,
     });
-
-    return res.sendSuccess(
-      201,
-      "Password created successfully",
-      passwordEntry.getPublicFields(),
-    );
+    return res.sendSuccess(201, "Password created successfully", passwordEntry);
   } catch (error) {
     res.sendError(500, "CO: Create password failed", error);
   }
 });
 
-// [] update password by id
-router.put(apiRoutes.password.updateOrDelete, async (req, res) => {});
+// [OK] update password by id
+router.put(
+  apiRoutes.password.updateOrDelete,
+  authMiddleware,
+  async (req, res) => {
+    try {
+      const id = req.params.id;
+      const userId = req.user.userId;
+      const { service, username, password, url, score, strength } = req.body;
 
-// [] delete password by id
-router.delete(apiRoutes.password.updateOrDelete, async (req, res) => {});
+      const passwordFound = await Password.findOne({ _id: id });
+
+      if (!passwordFound) {
+        return res.sendError(404, "Password not found");
+      }
+
+      if (passwordFound.userId.toString() !== userId) {
+        return res.sendError(
+          403,
+          "You are not authorized to update this password",
+        );
+      }
+
+      const isServiceChanged = service !== passwordFound.service;
+      const isUsernameChanged = username !== passwordFound.username;
+
+      if (isServiceChanged || isUsernameChanged) {
+        const duplicate = await Password.findOne({
+          service,
+          username,
+          userId,
+          _id: { $ne: id },
+        });
+
+        if (duplicate) {
+          return res.sendError(
+            400,
+            "A password for this service and username already exists. Please update the existing password or use a different username.",
+          );
+        }
+      }
+
+      let userEncryptionKey = await UserEncryptionKey.findOne({
+        userId,
+      });
+
+      if (!userEncryptionKey) {
+        const {
+          salt,
+          derivedKey: initialDerivedKey,
+          iv: keyIv,
+        } = encryptionUtils.generateUserEncryptionKeyData(userId);
+
+        const MASTER_KEY = encryptionUtils.getMasterKey();
+        const { encrypted: encryptedKey, authTag: keyAuthTag } =
+          encryptionUtils.encrypt(
+            initialDerivedKey.toString("base64"),
+            MASTER_KEY,
+            keyIv,
+          );
+
+        userEncryptionKey = await UserEncryptionKey.create({
+          userId,
+          salt: salt,
+          key: encryptedKey,
+          iv: keyIv,
+          authTag: keyAuthTag,
+        });
+      }
+
+      const derivedKey = encryptionUtils.deriveKey(
+        userId,
+        userEncryptionKey.salt,
+      );
+
+      const {
+        iv: passwordIv,
+        encrypted: encryptedPassword,
+        authTag: passwordAuthTag,
+      } = encryptionUtils.encrypt(password, derivedKey);
+
+      const updatedPassword = await Password.findOneAndUpdate(
+        { _id: id, userId },
+        {
+          service,
+          username,
+          password: encryptedPassword,
+          iv: passwordIv,
+          authTag: passwordAuthTag,
+          url,
+          score,
+          strength,
+        },
+        { new: true, upsert: false },
+      );
+
+      return res.sendSuccess(200, "Password updated successfully");
+    } catch (error) {
+      res.sendError(500, "CO: Update password failed", error);
+    }
+  },
+);
+
+// [OK] delete password by id
+router.delete(
+  apiRoutes.password.updateOrDelete,
+  authMiddleware,
+  async (req, res) => {
+    try {
+      const id = req.params.id;
+      const userId = req.user.userId;
+
+      const passwordFound = await Password.findOne({ _id: id });
+
+      if (!passwordFound) {
+        return res.sendError(404, "Password not found");
+      }
+      if (passwordFound.userId.toString() !== userId) {
+        return res.sendError(
+          403,
+          "You are not authorized to delete this password",
+        );
+      }
+
+      const deletedPassword = await Password.findOneAndDelete({ _id: id });
+
+      return res.sendSuccess(200, "Password deleted successfully");
+    } catch (error) {
+      res.sendError(500, "CO: Delete password failed", error);
+    }
+  },
+);
 
 module.exports = router;
 
