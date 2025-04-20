@@ -27,5 +27,5 @@ app.get(`${apiRoutes.base}${apiRoutes.health}`, (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Gateway API running on port ${PORT}.`);
+  console.log(`Gateway API running on port ${PORT}`);
 });
