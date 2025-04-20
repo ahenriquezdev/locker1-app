@@ -14,17 +14,17 @@ import { useRouter } from "next/navigation";
 
 interface PasswordNewDrawerProps {
   children: React.ReactNode;
-  onPasswordCreated?: () => void;
+  // onPasswordCreated?: () => void;
 }
 
 export default function PasswordNewDrawer({
   children,
-  onPasswordCreated,
 }: PasswordNewDrawerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
 
   const handlePasswordCreated = () => {
+    setIsOpen(false);
     router.refresh();
   };
 
@@ -39,12 +39,7 @@ export default function PasswordNewDrawer({
           </DrawerDescription>
         </DrawerHeader>
         <div className="p-4">
-          <PasswordNewForm
-            onActionComplete={() => {
-              setIsOpen(false);
-              handlePasswordCreated();
-            }}
-          />
+          <PasswordNewForm onActionComplete={handlePasswordCreated} />
         </div>
       </DrawerContent>
     </Drawer>

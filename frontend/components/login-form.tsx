@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useActionState, useEffect, useState } from "react";
+import React, { useActionState, useEffect, useState, useRef } from "react";
 import { signInWithCredentials } from "@/lib/actions/authActions";
 import { signIn } from "next-auth/react";
 import { ApiResponse } from "@/lib/types";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
+import { showToastNotification } from "@/components/showToastNotification";
 
 export default function LoginForm() {
   const [formData, setFormData] = useState({
@@ -29,8 +29,20 @@ export default function LoginForm() {
     initialState,
   );
 
+  const toastShownRef = useRef(false);
   const { success, message, data, errors, display = false } = state;
-  const [showToast, setShowToast] = useState(false);
+
+  useEffect(() => {
+    if (state.display && !toastShownRef.current) {
+      showToastNotification(state, {
+        title: success ? "Operation successful" : "An error occurred",
+        onDismiss: () => {
+          toastShownRef.current = false;
+        },
+      });
+      toastShownRef.current = true;
+    }
+  }, [state]);
 
   const handleGoogleSignIn = async () => {
     await signIn("google", {
@@ -46,43 +58,6 @@ export default function LoginForm() {
       [name]: value,
     }));
   };
-
-  useEffect(() => {
-    if (display && (message || errors)) {
-      setShowToast(true);
-    }
-  }, [display, message, errors]);
-
-  useEffect(() => {
-    if (showToast) {
-      toast[success ? "success" : "error"]("Notification received", {
-        description: (
-          <>
-            <p className="mt-1 text-sm">{message}</p>
-            <br />
-            {errors &&
-              errors.length > 0 &&
-              errors.map((item, index) => (
-                <div key={index} className="text-sm">
-                  <dt className="font-semibold text-xs">{item.field}:</dt>
-                  <dd className="ml-4">{item.message}</dd>
-                </div>
-              ))}
-          </>
-        ),
-        duration: 5000,
-        position: "top-right",
-        className: "z-50",
-        onAutoClose: () => {
-          setShowToast(false);
-        },
-      });
-    }
-
-    return () => {
-      setShowToast(false);
-    };
-  }, [showToast, success, message, errors]);
 
   useEffect(() => {
     if (success && data) {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useActionState, useEffect, useState } from "react";
+import React, { useActionState, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,13 +9,14 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { getPasswordScore, getPasswordStrength } from "@/lib/utils";
 import { createPassword } from "@/lib/actions/passwordActions";
 import { ApiResponse, PasswordFormProps } from "@/lib/types";
-import { toast } from "sonner";
+import { showToastNotification } from "@/components/showToastNotification";
 
 export default function PasswordNewForm({
   onActionComplete,
 }: PasswordFormProps) {
   const [formData, setFormData] = useState({
     service: "",
+    url: "",
     username: "",
     password: "",
     score: 0,
@@ -34,12 +35,25 @@ export default function PasswordNewForm({
     createPassword,
     initialState,
   );
+
+  const toastShownRef = useRef(false);
   const { success, message, errors, display = false } = state;
-  const [showToast, setShowToast] = useState(false);
+
+  useEffect(() => {
+    if (state.display && !toastShownRef.current) {
+      showToastNotification(state, {
+        title: success ? "Operation successful" : "An error occurred",
+        onDismiss: () => {
+          toastShownRef.current = false;
+        },
+      });
+      toastShownRef.current = true;
+    }
+  }, [state]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement>,
-    field: "service" | "username" | "password",
+    field: "service" | "url" | "username" | "password",
   ) => {
     const value = e.target.value;
     setFormData((prev) => {
@@ -60,46 +74,9 @@ export default function PasswordNewForm({
   };
 
   useEffect(() => {
-    if (display && (message || errors)) {
-      setShowToast(true);
-    }
-  }, [display, message, errors]);
-
-  useEffect(() => {
-    if (showToast) {
-      toast[success ? "success" : "error"]("Notification received", {
-        description: (
-          <>
-            <p className="mt-1 text-sm">{message}</p>
-            <br />
-            {errors &&
-              errors.length > 0 &&
-              errors.map((item, index) => (
-                <div key={index} className="text-sm">
-                  <dt className="font-semibold text-xs">{item.field}:</dt>
-                  <dd className="ml-4">{item.message}</dd>
-                </div>
-              ))}
-          </>
-        ),
-        duration: 5000,
-        position: "top-right",
-        className: "z-50",
-        onAutoClose: () => {
-          setShowToast(false);
-        },
-      });
-    }
-
-    return () => {
-      setShowToast(false);
-    };
-  }, [showToast, success, message, errors]);
-
-  useEffect(() => {
     if (success && !isPending && (!errors || errors.length === 0)) {
       setTimeout(() => {
-        onActionComplete(false);
+        onActionComplete?.();
       }, 2000);
     }
   }, [success, isPending, errors, onActionComplete]);
@@ -114,6 +91,18 @@ export default function PasswordNewForm({
           value={formData.service}
           onChange={(e) => handleInputChange(e, "service")}
           placeholder="ej. Gmail, Twitter, etc."
+          className="input-field"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="url">Url del servicio</Label>
+        <Input
+          id="url"
+          name="url"
+          value={formData.url}
+          onChange={(e) => handleInputChange(e, "url")}
+          placeholder="ej. https://gmail.com"
           className="input-field"
         />
       </div>

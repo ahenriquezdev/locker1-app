@@ -1,102 +1,137 @@
-import axios, { AxiosRequestConfig } from "axios";
-import { auth } from "@/lib/auth";
-import apiRoutes from "@/lib/endpoints";
+import axios, { AxiosError, AxiosRequestConfig } from "axios";
+import { getSessionUser } from "@/lib/session-helper";
 
-const API_TIMEOUT = 5000;
+const API_TIMEOUT =
+  process.env.NEXT_PUBLIC_NODE_ENV === "production" ? 5000 : 10000;
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000;
 
-async function isServiceAvailable(): Promise<boolean> {
+const recoverableErrorCodes = [
+  "ECONNRESET",
+  "ECONNREFUSED",
+  "ETIMEDOUT",
+  "ENOTFOUND",
+];
+
+const knownLogoutTriggers = [
+  "no token provided",
+  "token entry not found",
+  "token entry expired",
+  "user not found",
+];
+
+export class SessionExpiredError extends Error {
+  constructor(message = "Your session has expired") {
+    super(message);
+    this.name = "SessionExpiredError";
+  }
+}
+
+function getExponentialBackoffDelay(retry: number): number {
+  const base = RETRY_DELAY;
+  const jitter = Math.floor(Math.random() * 300);
+  return Math.min(10000, base * 2 ** retry + jitter);
+}
+
+async function getAccessToken(): Promise<string | undefined> {
   try {
-    const response = await axios.get(apiRoutes.remote.health, {
-      timeout: API_TIMEOUT,
-    });
-    return response.status === 200;
-  } catch (error) {
-    console.warn("Health check failed:", error.message);
-    return false;
+    const session = await getSessionUser();
+    return session?.accessToken;
+  } catch (err) {
+    console.error("Failed to get session:", err);
+    return undefined;
   }
 }
 
-async function getAuthorizationHeader(): Promise<string | undefined> {
-  const session = await auth();
-  return session?.accessToken ? `Bearer ${session.accessToken}` : undefined;
-}
-
-async function apiRequest<T>(
-  url: string,
-  method: "GET" | "POST" | "PUT" | "DELETE",
-  data?: any,
-  config: AxiosRequestConfig = {},
-): Promise<T> {
-  if (!(await isServiceAvailable())) {
-    throw new Error("Service unavailable");
-  }
-
-  const headers: Record<string, string> = {
+function buildHeaders(
+  token?: string,
+  customHeaders?: Record<string, string>,
+): Record<string, string> {
+  return {
     "Content-Type": "application/json",
-    ...config.headers,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...customHeaders,
   };
+}
+
+function handleAxiosError(error: AxiosError): Error {
+  const status = error.response?.status;
+  const message =
+    (error.response?.data as any)?.message?.toLowerCase?.() ||
+    error.message.toLowerCase();
 
   if (
-    !url.includes(apiRoutes.remote.auth.login || apiRoutes.remote.auth.register)
+    status &&
+    knownLogoutTriggers.some((trigger) => message.includes(trigger))
   ) {
-    const authorizationHeader = await getAuthorizationHeader();
-    if (authorizationHeader) {
-      headers.Authorization = authorizationHeader;
-    }
+    return new SessionExpiredError(
+      "Your session has expired. Redirecting to login...",
+    );
   }
 
-  const axiosConfig: AxiosRequestConfig = {
-    url,
-    method,
-    headers,
-    data,
-    timeout: config.timeout || API_TIMEOUT,
-  };
+  return new Error(message || "Unknown error while calling the API.");
+}
+
+export async function apiRequest<T>(
+  method: "GET" | "POST" | "PUT" | "DELETE",
+  url: string,
+  data?: any,
+  config: AxiosRequestConfig & { safeRetry?: boolean } = {},
+  retries = 0,
+): Promise<T> {
+  const token = await getAccessToken();
+  const headers = buildHeaders(token, config.headers as Record<string, string>);
 
   try {
-    const response = await axios(axiosConfig);
+    const response = await axios({
+      url,
+      method,
+      data,
+      timeout: config.timeout || API_TIMEOUT,
+      headers,
+      ...config,
+    });
+
     return response.data as T;
-  } catch (error: any) {
+  } catch (error) {
     if (axios.isAxiosError(error)) {
-      console.error(
-        `API Error (${error.code}): ${error.message} - URL: ${url}, Method: ${method}`,
-      );
-      throw error;
-    } else {
-      console.error(
-        `Unexpected API Error: ${error} - URL: ${url}, Method: ${method}`,
-      );
-      throw new Error(`An unexpected error occurred: ${error}`);
+      const isRecoverable = recoverableErrorCodes.includes(error.code ?? "");
+      const canRetry =
+        retries < MAX_RETRIES && (config.safeRetry || method !== "POST");
+
+      if (isRecoverable && canRetry) {
+        console.warn(`Retrying [${method}] ${url}. Attempt #${retries + 1}`);
+        await new Promise((resolve) =>
+          setTimeout(resolve, getExponentialBackoffDelay(retries)),
+        );
+        return apiRequest<T>(method, url, data, config, retries + 1);
+      }
+
+      return Promise.reject(handleAxiosError(error));
     }
+
+    return Promise.reject(new Error("Unexpected API error"));
   }
 }
 
-export async function apiGet<T>(
+export const apiGet = <T>(
   url: string,
-  config: AxiosRequestConfig = {},
-): Promise<T> {
-  return apiRequest<T>(url, "GET", undefined, config);
-}
+  config: AxiosRequestConfig & { safeRetry?: boolean } = {},
+) => apiRequest<T>("GET", url, undefined, config);
 
-export async function apiPost<T>(
+export const apiPost = <T>(
   url: string,
   data: any,
-  config: AxiosRequestConfig = {},
-): Promise<T> {
-  return apiRequest<T>(url, "POST", data, config);
-}
+  config: AxiosRequestConfig & { safeRetry?: boolean } = {},
+) => apiRequest<T>("POST", url, data, config);
 
-export async function apiPut<T>(
+export const apiPut = <T>(
   url: string,
   data: any,
-  config: AxiosRequestConfig = {},
-): Promise<T> {
-  return apiRequest<T>(url, "PUT", data, config);
-}
+  config: AxiosRequestConfig & { safeRetry?: boolean } = {},
+) => apiRequest<T>("PUT", url, data, config);
 
-export async function apiDelete<T>(
+export const apiDelete = <T>(
   url: string,
-  config: AxiosRequestConfig = {},
-): Promise<T> {
-  return apiRequest<T>(url, "DELETE", undefined, config);
-}
+  config: AxiosRequestConfig & { safeRetry?: boolean } = {},
+) => apiRequest<T>("DELETE", url, undefined, config);

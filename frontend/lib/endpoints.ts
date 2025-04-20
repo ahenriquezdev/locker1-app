@@ -1,8 +1,9 @@
-const GATEWAY_SERVICE_URL = process.env.GATEWAY_SERVICE_URL;
+const NEXT_PUBLIC_GATEWAY_SERVICE_URL =
+  process.env.NEXT_PUBLIC_GATEWAY_SERVICE_URL;
 
 const apiRoutes = {
   remote: (() => {
-    const apiUrl = `${GATEWAY_SERVICE_URL}/api/v1`;
+    const apiUrl = `${NEXT_PUBLIC_GATEWAY_SERVICE_URL}/api/v1`;
     return {
       base: apiUrl,
       docs: `${apiUrl}/docs`,

@@ -41,11 +41,32 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user?.id) {
         token.id = user.id;
       }
-      if (user?.accessToken) {
-        token.accessToken = user.accessToken;
-      }
+
       if (account?.access_token) {
         token.accessToken = account.access_token;
+
+        try {
+          const decodedToken = JSON.parse(
+            Buffer.from(
+              account.access_token.split(".")[1],
+              "base64",
+            ).toString(),
+          );
+          token.exp = decodedToken.exp;
+        } catch (error) {
+          console.error("Error while decoding accessToken", error);
+        }
+      } else if (user?.accessToken) {
+        token.accessToken = user.accessToken;
+
+        try {
+          const decodedToken = JSON.parse(
+            Buffer.from(user.accessToken.split(".")[1], "base64").toString(),
+          );
+          token.exp = decodedToken.exp;
+        } catch (error) {
+          console.error("Error while decoding accessToken from user:", error);
+        }
       }
 
       return token;
@@ -56,6 +77,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
       if (token?.accessToken) {
         session.accessToken = token.accessToken;
+      }
+
+      if (token?.exp) {
+        session.expires = new Date(token.exp * 1000).toISOString();
       }
       return session;
     },

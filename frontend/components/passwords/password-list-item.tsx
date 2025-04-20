@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useActionState, useEffect, useRef, useState } from "react";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { formatRelativeTime, getPasswordStrength } from "@/lib/utils";
@@ -23,7 +23,10 @@ import {
 } from "@/components/ui/drawer";
 import PasswordUpdateForm from "@/components/passwords/password-update-form";
 import PasswordViewDetail from "@/components/passwords/password-view-detail";
-import { PasswordModel } from "@/lib/types";
+import { ApiResponse, PasswordModel } from "@/lib/types";
+import { getPasswordById, deletePassword } from "@/lib/actions/passwordActions";
+import { useRouter } from "next/navigation";
+import { showToastNotification } from "@/components/showToastNotification";
 
 type SearchParamsType = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -41,14 +44,61 @@ export default function PasswordListItem({
   // const params = await searchParams;
   const [isViewDrawerOpen, setIsViewDrawerOpen] = useState(false);
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState<PasswordModel | null>(
+    null,
+  );
 
-  const handleViewPassword = () => {
-    setIsViewDrawerOpen(false);
+  const toastShownRef = useRef(false);
+  const router = useRouter();
+
+  const handledViewDetail = async () => {
+    const result = await getPasswordById(password.id);
+
+    if (!result || !result.success) {
+      return;
+    }
+
+    setCurrentPassword(result?.data?.password as PasswordModel);
+    setIsViewDrawerOpen(true);
   };
 
-  const handleUpdatePassword = (passwordData: any) => {
-    console.log("Contraseña actualizada:", passwordData);
+  const handleUpdatePassword = async () => {
+    const result = await getPasswordById(password.id);
+
+    if (!result || !result.success) {
+      return;
+    }
+
+    setCurrentPassword(result?.data?.password as PasswordModel);
+    setIsEditDrawerOpen(true);
+  };
+
+  const handlePasswordDelete = async () => {
+    const formData = new FormData();
+    formData.append("id", password.id.toString());
+
+    const result: ApiResponse.Response = await deletePassword(formData);
+
+    const { display, success } = result;
+
+    if (display && !toastShownRef.current) {
+      showToastNotification(result, {
+        title: success ? "Operation successful" : "An error occurred",
+        onDismiss: () => {
+          toastShownRef.current = false;
+        },
+      });
+      toastShownRef.current = true;
+    }
+
+    if (success) {
+      router.refresh();
+    }
+  };
+
+  const handlePasswordUpdated = () => {
     setIsEditDrawerOpen(false);
+    router.refresh();
   };
 
   return (
@@ -56,16 +106,8 @@ export default function PasswordListItem({
       <TableCell className="font-medium">{password.service}</TableCell>
       <TableCell>{password.username}</TableCell>
       <TableCell>
-        <Badge
-          variant={
-            password.sharedTeams && password.sharedTeams.length > 0
-              ? "success"
-              : "outline"
-          }
-        >
-          {password.sharedTeams && password.sharedTeams.length > 0
-            ? "Compartida"
-            : "Sin compartir"}
+        <Badge variant={password.isShared ? "success" : "outline"}>
+          {password.isShared ? "Compartida" : "Sin compartir"}
         </Badge>
       </TableCell>
       <TableCell>
@@ -73,7 +115,7 @@ export default function PasswordListItem({
           {password.strength}
         </Badge>
       </TableCell>
-      <TableCell>{formatRelativeTime(password.last_update)}</TableCell>
+      <TableCell>{formatRelativeTime(password.updatedAt)}</TableCell>
       <TableCell className="text-right">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -84,17 +126,17 @@ export default function PasswordListItem({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => setIsViewDrawerOpen(true)}>
+            <DropdownMenuItem onClick={handledViewDetail}>
               <Eye className="mr-2 h-4 w-4" />
               <span>Ver detalles</span>
             </DropdownMenuItem>
             <>
-              <DropdownMenuItem onClick={() => setIsEditDrawerOpen(true)}>
+              <DropdownMenuItem onClick={handleUpdatePassword}>
                 <Edit className="mr-2 h-4 w-4" />
                 <span>Editar</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handlePasswordDelete()}>
                 <Trash2 className="mr-2 h-4 w-4" />
                 <span>Eliminar</span>
               </DropdownMenuItem>
@@ -112,8 +154,8 @@ export default function PasswordListItem({
             </DrawerDescription>
           </DrawerHeader>
           <PasswordViewDetail
-            selectedPassword={password}
-            onCancel={() => setIsViewDrawerOpen(false)}
+            currentPassword={currentPassword as PasswordModel}
+            onActionComplete={() => setIsViewDrawerOpen(false)}
           />
         </DrawerContent>
       </Drawer>
@@ -126,11 +168,12 @@ export default function PasswordListItem({
               Modifica los detalles de la clave
             </DrawerDescription>
           </DrawerHeader>
-          <PasswordUpdateForm
-            initialData={password}
-            onSubmit={handleUpdatePassword}
-            onCancel={() => setIsEditDrawerOpen(false)}
-          />
+          <div className="p-4">
+            <PasswordUpdateForm
+              currentPassword={currentPassword as PasswordModel}
+              onActionComplete={handlePasswordUpdated}
+            />
+          </div>
         </DrawerContent>
       </Drawer>
     </TableRow>

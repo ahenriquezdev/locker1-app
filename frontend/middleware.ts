@@ -1,40 +1,37 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth, signOut } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 
 export default async function middleware(req: NextRequest) {
-  if (req.nextUrl.pathname.startsWith("/api/auth/")) {
+  const { pathname, origin } = req.nextUrl;
+
+  const isPublicPath = ["/login", "/signup"].some((path) =>
+    pathname.startsWith(path),
+  );
+  const isAuthApiCall = pathname.startsWith("/api/auth/");
+
+  if (isAuthApiCall || isPublicPath) {
     return NextResponse.next();
   }
 
   const session = await auth();
 
-  if (
-    !session &&
-    !req.nextUrl.pathname.startsWith("/login") &&
-    !req.nextUrl.pathname.startsWith("/signup")
-  ) {
-    return NextResponse.redirect(new URL("/login", req.url));
+  if (!session) {
+    console.warn("No session found. Redirecting to login...");
+    return NextResponse.redirect(new URL("/login", origin));
   }
 
-  if (
-    session &&
-    session.expiresAt &&
-    session.expiresAt < Math.floor(Date.now() / 1000)
-  ) {
-    const response = NextResponse.redirect(new URL("/login", req.url));
-    response.cookies.set("authjs.session-token", "", {
-      httpOnly: true,
-      sameSite: "lax",
-      path: "/",
-      expires: new Date(0),
-    });
-    return response;
+  const expiresAt = new Date(session.expires);
+  const now = new Date();
+
+  if (expiresAt <= now) {
+    console.warn("Session expired. Redirecting to login...");
+    return NextResponse.redirect(new URL("/login", origin));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/", "/login", "/signup"],
+  matcher: ["/dashboard/:path*", "/", "/profile/:path*", "/settings/:path*"],
 };

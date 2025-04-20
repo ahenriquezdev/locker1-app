@@ -16,7 +16,6 @@ export namespace ApiResponse {
 export interface PasswordFormProps {
   formData?: PasswordModel;
   currentPassword?: PasswordModel;
-
   onActionComplete?(): void | Promise<void>;
 }
 

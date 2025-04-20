@@ -16,7 +16,6 @@ const signInSchema = z.object({
 
 async function validateFormData(formData: FormData) {
   const parsedFormData = Object.fromEntries(formData);
-
   const validationResult = signInSchema.safeParse(parsedFormData);
 
   if (!validationResult.success) {
@@ -56,6 +55,7 @@ export async function signInWithCredentials(
     const apiResponse = await apiPost<ApiResponse.Response>(
       apiRoutes.remote.auth.login,
       formattedData,
+      { safeRetry: true },
     );
 
     if (!apiResponse || !apiResponse.success) {
@@ -76,24 +76,34 @@ export async function signInWithCredentials(
       display: true,
     };
   } catch (error: any) {
-    console.error("Login error:", error);
-
-    let message = "An unexpected error occurred. Please try again later.";
-
-    if (error?.message === "Service unavailable") {
-      message = "The service is currently unavailable.";
-    } else if (error instanceof AuthError) {
-      message = "Authentication failed. Please check your credentials.";
-    } else if (error.message.startsWith("API Error")) {
-      message = `Api error: ${error.message.split(": ")[1] || "Please try again later.."}`;
-    } else if (error.message.startsWith("Unexpected API Error")) {
-      message = `Unexpected api error: ${error.message.split(": ")[1] || "Please try again later.."}`;
-    }
-
-    return {
-      success: false,
-      message: message,
-      display: true,
-    };
+    return handleError(error, "Error during login:");
   }
+}
+
+function handleError(
+  error: any,
+  customMessage: string = "An unexpected error occurred. Please try again later.",
+) {
+  console.log(customMessage, error);
+
+  let message = customMessage;
+
+  if (error?.message === "Service unavailable") {
+    message = "The service is currently unavailable.";
+  } else if (error instanceof AuthError) {
+    message = "Authentication failed. Please check your credentials.";
+  } else if (error?.message?.startsWith("API Error")) {
+    message = `API Error: ${error.message.split(": ")[1] || "Please try again later."}`;
+  } else if (error?.message?.startsWith("Unexpected API Error")) {
+    message = `Unexpected Error: ${error.message.split(": ")[1] || "Please try again later."}`;
+  } else {
+    message =
+      error?.message || "An unexpected error occurred. Please try again later.";
+  }
+
+  return {
+    success: false,
+    message: message,
+    display: true,
+  };
 }

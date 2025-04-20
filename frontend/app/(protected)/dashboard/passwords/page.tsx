@@ -1,4 +1,3 @@
-// src/components/passwords/PasswordPage.tsx
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";

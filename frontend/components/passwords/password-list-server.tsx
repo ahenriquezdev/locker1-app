@@ -18,11 +18,9 @@ export default async function PasswordListServer({
   searchParams,
 }: PasswordSearchParams) {
   const result = await getPasswords();
-  const passwords = result.data || [];
+  const passwords = result?.data?.results ?? [];
 
-  const filteredPasswords = passwords.filter((password) => {
-    return true;
-  });
+  const filteredPasswords = passwords.filter(() => true);
 
   return (
     <>
