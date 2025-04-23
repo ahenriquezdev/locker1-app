@@ -1,0 +1,374 @@
+const express = require("express");
+const router = express.Router();
+const { authenticate } = require("../middleware/auth");
+const Group = require("../models/Group");
+const Password = require("../models/Password");
+const mongoose = require("mongoose");
+
+// Create a new group
+router.post("/", authenticate, async (req, res) => {
+  try {
+    const { name, description } = req.body;
+
+    if (!name) {
+      return res.status(400).json({
+        status: "error",
+        message: "Group name is required",
+      });
+    }
+
+    const newGroup = new Group({
+      name,
+      description,
+      owner: req.user.id,
+      members: [{ userId: req.user.id, role: "admin" }],
+    });
+
+    await newGroup.save();
+
+    res.status(201).json({
+      status: "success",
+      data: {
+        group: newGroup,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      message: "Failed to create group",
+    });
+  }
+});
+
+// Get all groups where user is owner or member
+router.get("/", authenticate, async (req, res) => {
+  try {
+    const groups = await Group.find({
+      "members.userId": req.user.id,
+    });
+
+    res.json({
+      status: "success",
+      data: {
+        groups,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      message: "Failed to fetch groups",
+    });
+  }
+});
+
+// Get a single group
+router.get("/:id", authenticate, async (req, res) => {
+  try {
+    const group = await Group.findOne({
+      _id: req.params.id,
+      "members.userId": req.user.id,
+    });
+
+    if (!group) {
+      return res.status(404).json({
+        status: "error",
+        message: "Group not found",
+      });
+    }
+
+    res.json({
+      status: "success",
+      data: {
+        group,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      message: "Failed to fetch group",
+    });
+  }
+});
+
+// Update group details
+router.put("/:id", authenticate, async (req, res) => {
+  try {
+    const group = await Group.findOne({
+      _id: req.params.id,
+      "members.userId": req.user.id,
+      "members.role": "admin",
+    });
+
+    if (!group) {
+      return res.status(404).json({
+        status: "error",
+        message: "Group not found or insufficient permissions",
+      });
+    }
+
+    const { name, description } = req.body;
+    if (name) group.name = name;
+    if (description) group.description = description;
+
+    await group.save();
+
+    res.json({
+      status: "success",
+      data: {
+        group,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      message: "Failed to update group",
+    });
+  }
+});
+
+// Add member to group
+router.post("/:id/members", authenticate, async (req, res) => {
+  try {
+    const { userId, role = "member" } = req.body;
+
+    const group = await Group.findOne({
+      _id: req.params.id,
+      owner: req.user.id,
+    });
+
+    if (!group) {
+      return res.status(404).json({
+        status: "error",
+        message: "Group not found or you are not the owner",
+      });
+    }
+
+    // Check if user is already a member
+    if (group.members.some((member) => member.userId === userId)) {
+      return res.status(400).json({
+        status: "error",
+        message: "User is already a member of this group",
+      });
+    }
+
+    group.members.push({
+      userId,
+      role,
+      addedAt: new Date(),
+    });
+
+    await group.save();
+
+    res.json({
+      status: "success",
+      data: {
+        group,
+      },
+    });
+  } catch (error) {
+    res.status(400).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+});
+
+// Remove member from group
+router.delete("/:id/members/:userId", authenticate, async (req, res) => {
+  try {
+    const group = await Group.findOne({
+      _id: req.params.id,
+      owner: req.user.id,
+    });
+
+    if (!group) {
+      return res.status(404).json({
+        status: "error",
+        message: "Group not found or you are not the owner",
+      });
+    }
+
+    group.members = group.members.filter(
+      (member) => member.userId !== req.params.userId,
+    );
+
+    await group.save();
+
+    res.json({
+      status: "success",
+      data: {
+        group,
+      },
+    });
+  } catch (error) {
+    res.status(400).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+});
+
+// Share password with group
+router.post("/:id/share", authenticate, async (req, res) => {
+  try {
+    const { passwordId } = req.body;
+
+    // Check if password exists and belongs to user
+    const password = await Password.findOne({
+      _id: passwordId,
+      userId: req.user.id,
+    });
+
+    if (!password) {
+      return res.status(404).json({
+        status: "error",
+        message: "Password not found or you do not have permission to share it",
+      });
+    }
+
+    // Check if group exists and user is owner or admin
+    const group = await Group.findOne({
+      _id: req.params.id,
+      $or: [
+        { owner: req.user.id },
+        {
+          members: {
+            $elemMatch: {
+              userId: req.user.id,
+              role: "admin",
+            },
+          },
+        },
+      ],
+    });
+
+    if (!group) {
+      return res.status(404).json({
+        status: "error",
+        message: "Group not found or insufficient permissions",
+      });
+    }
+
+    // Add password to group's shared passwords if not already shared
+    const passwordObjectId = new mongoose.Types.ObjectId(passwordId);
+    const passwordIdExists = group.sharedPasswords.some((id) =>
+      id.equals(passwordObjectId),
+    );
+
+    if (!passwordIdExists) {
+      group.sharedPasswords.push(passwordObjectId);
+      await group.save();
+    }
+
+    // Add group to password's shared with list if not already added
+    const groupObjectId = new mongoose.Types.ObjectId(group._id);
+    const groupIdExists = password.sharedWith.some((id) =>
+      id.equals(groupObjectId),
+    );
+
+    if (!groupIdExists) {
+      password.sharedWith.push(groupObjectId);
+      await password.save();
+    }
+
+    res.json({
+      status: "success",
+      message: "Password shared successfully",
+      data: {
+        group: group,
+      },
+    });
+  } catch (error) {
+    console.error("Share password error:", error);
+    res.status(400).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+});
+
+// Unshare password from group
+router.delete("/:id/share/:passwordId", authenticate, async (req, res) => {
+  try {
+    // Check if group exists and user is owner or admin
+    const group = await Group.findOne({
+      _id: req.params.id,
+      $or: [
+        { owner: req.user.id },
+        {
+          members: {
+            $elemMatch: {
+              userId: req.user.id,
+              role: "admin",
+            },
+          },
+        },
+      ],
+    });
+
+    if (!group) {
+      return res.status(404).json({
+        status: "error",
+        message: "Group not found or insufficient permissions",
+      });
+    }
+
+    // Remove password from group's shared passwords
+    const passwordObjectId = new mongoose.Types.ObjectId(req.params.passwordId);
+    group.sharedPasswords = group.sharedPasswords.filter(
+      (id) => !id.equals(passwordObjectId),
+    );
+    await group.save();
+
+    // Remove group from password's shared with list
+    const groupObjectId = new mongoose.Types.ObjectId(group._id);
+    await Password.findByIdAndUpdate(req.params.passwordId, {
+      $pull: { sharedWith: groupObjectId },
+    });
+
+    res.json({
+      status: "success",
+      message: "Password unshared successfully",
+      data: {
+        group: group,
+      },
+    });
+  } catch (error) {
+    console.error("Unshare password error:", error);
+    res.status(400).json({
+      status: "error",
+      message: error.message,
+    });
+  }
+});
+
+// Delete group
+router.delete("/:id", authenticate, async (req, res) => {
+  try {
+    const group = await Group.findOne({
+      _id: req.params.id,
+      owner: req.user.id,
+    });
+
+    if (!group) {
+      return res.status(404).json({
+        status: "error",
+        message: "Group not found or insufficient permissions",
+      });
+    }
+
+    await group.remove();
+
+    res.json({
+      status: "success",
+      message: "Group deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: "error",
+      message: "Failed to delete group",
+    });
+  }
+});
+
+module.exports = router;

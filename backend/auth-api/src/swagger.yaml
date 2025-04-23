@@ -1,0 +1,393 @@
+openapi: 3.0.0
+info:
+  title: Locker1 Auth API
+  description: |
+    Authentication service for Locker1 password manager.
+    
+    ## Authentication
+    1. Get your token from the login or register endpoint
+    2. Click the 'Authorize' button above
+    3. Paste ONLY your JWT token (without the 'Bearer' prefix)
+    4. Click 'Authorize'
+  version: 1.0.0
+servers:
+  - url: http://localhost:3001
+    description: Local development server
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Authentication
+    description: User authentication endpoints
+  - name: Encryption
+    description: Encryption key management endpoints
+
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        _id:
+          type: string
+          format: uuid
+          description: Unique identifier for the user
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        email:
+          type: string
+          format: email
+          description: User's email address
+          example: "user@example.com"
+        fullName:
+          type: string
+          description: User's full name
+          example: "John Doe"
+        isActive:
+          type: boolean
+          description: Whether the user account is active
+          example: true
+        securityScore:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: User's security score based on password practices
+          example: 85
+        lastLogin:
+          type: string
+          format: date-time
+          description: Last login timestamp
+          example: "2024-03-23T12:00:00Z"
+        createdAt:
+          type: string
+          format: date-time
+          description: Account creation timestamp
+          example: "2024-03-23T10:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Account last update timestamp
+          example: "2024-03-23T12:00:00Z"
+      required:
+        - email
+        - fullName
+
+    Error:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "error"
+        message:
+          type: string
+          example: "Error message description"
+
+    Success:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "success"
+        data:
+          type: object
+
+    EncryptionKey:
+      type: object
+      properties:
+        key:
+          type: string
+          format: byte
+          description: Base64 encoded encryption key
+          example: "dGhpcyBpcyBhIHRlc3Qga2V5IGZvciBBRVMtMjU2"
+        iv:
+          type: string
+          format: byte
+          description: Base64 encoded initialization vector
+          example: "dGhpcyBpcyBhIHRlc3QgaXY="
+  
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Paste only your JWT token. The "Bearer" prefix will be added automatically.'
+
+# Global security - can be overridden at path level
+security:
+  - BearerAuth: []
+
+paths:
+  /health:
+    get:
+      security: []  # No security on health endpoint
+      tags:
+        - Health
+      summary: Health check endpoint
+      description: Returns the health status of the auth service
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "healthy"
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: "2024-03-23T12:00:00Z"
+                  service:
+                    type: string
+                    example: "auth-api"
+
+  /auth/register:
+    post:
+      security: []  # No security on register endpoint
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: Create a new user account
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "user@example.com"
+                password:
+                  type: string
+                  format: password
+                  example: "YourSecurePassword123!"
+                fullName:
+                  type: string
+                  example: "John Doe"
+              required:
+                - email
+                - password
+                - fullName
+      responses:
+        '201':
+          description: User successfully registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/User'
+                      token:
+                        type: string
+                        example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        '400':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/login:
+    post:
+      security: []  # No security on login endpoint
+      tags:
+        - Authentication
+      summary: Login user
+      description: Authenticate user and return JWT token
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "user@example.com"
+                password:
+                  type: string
+                  format: password
+                  example: "YourSecurePassword123!"
+              required:
+                - email
+                - password
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/User'
+                      token:
+                        type: string
+                        example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/me:
+    get:
+      tags:
+        - Authentication
+      summary: Get current user
+      description: |
+        Get the profile of the currently authenticated user.
+        Requires Bearer token authentication.
+      operationId: getCurrentUser
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      user:
+                        $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized - Invalid or missing token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/encryption-key:
+    get:
+      tags:
+        - Authentication
+      summary: Get user's encryption key (auto-generates if none exists)
+      security:
+        - BearerAuth: []
+      description: Retrieves the user's encryption key. If no key exists, automatically generates a new one.
+      responses:
+        '200':
+          description: Encryption key retrieved or generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      key:
+                        type: string
+                        example: base64EncodedKey
+                      iv:
+                        type: string
+                        example: base64EncodedIV
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    
+    post:
+      tags:
+        - Authentication
+      summary: Generate new encryption key
+      security:
+        - BearerAuth: []
+      description: Generates a new encryption key for the user, replacing any existing key
+      responses:
+        '200':
+          description: New encryption key generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      key:
+                        type: string
+                        example: base64EncodedKey
+                      iv:
+                        type: string
+                        example: base64EncodedIV
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    
+    delete:
+      tags:
+        - Authentication
+      summary: Delete encryption key
+      security:
+        - BearerAuth: []
+      description: Deletes the user's current encryption key
+      responses:
+        '200':
+          description: Encryption key deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                    example: Encryption key deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized' 
