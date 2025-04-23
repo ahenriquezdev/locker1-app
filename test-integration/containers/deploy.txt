@@ -1,0 +1,2 @@
+docker-compose -p locker1-services up -d
+docker-compose -p locker1-services down
