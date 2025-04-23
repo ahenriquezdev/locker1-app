@@ -17,6 +17,15 @@ const apiRoutes = {
         getById: `${apiUrl}/core-api/password/:id`,
         create: `${apiUrl}/core-api/password`,
         updateOrDelete: `${apiUrl}/core-api/password/:id`,
+        getCount: `${apiUrl}/core-api/passwords/count`,
+        getLastUpdated: `${apiUrl}/core-api/passwords/last-updated`,
+      },
+      group: {
+        getCount: `${apiUrl}/core-api/groups/count`,
+        getAll: `${apiUrl}/core-api/groups`,
+      },
+      user: {
+        getSecurityScore: `${apiUrl}/core-api/user/security-score`,
       },
     };
   })(),

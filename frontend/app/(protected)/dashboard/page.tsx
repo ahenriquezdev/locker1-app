@@ -1,7 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
-import Link from "next/link";
+import React, { useEffect, useState } from "react";
 import {
   AlertCircle,
   Lock,
@@ -18,7 +17,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -28,41 +26,70 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useSession } from "next-auth/react";
+import { toast } from "sonner";
+import { AnimatedCounter } from "@/components/dashboard/animate-counter";
+import {
+  getPasswordCount,
+  getLastUpdated,
+} from "@/lib/actions/passwordActions";
+import { getGroupCount } from "@/lib/actions/groupActions";
+import { getUserSecurityScore } from "@/lib/actions/userActions";
+import { formatRelativeTime } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DashboardPage() {
-  const { data: session } = useSession();
-  const [passwordsVisible, setPasswordsVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [securityScore, setSecurityScore] = useState(0);
+  const [passwordCount, setPasswordCount] = useState(0);
+  const [groupCount, setGroupCount] = useState(0);
+  const [recentPasswords, setRecentPasswords] = useState([]);
 
-  const securityScore = 75;
-  const recentPasswords = [
-    {
-      id: 1,
-      service: "Gmail",
-      username: "user@gmail.com",
-      lastUsed: "Hace 2 horas",
-      group: "Personal",
-    },
-    {
-      id: 2,
-      service: "Amazon",
-      username: "user.shopping",
-      lastUsed: "Hace 1 día",
-      group: "Compras",
-    },
-    {
-      id: 3,
-      service: "Netflix",
-      username: "user.streaming",
-      lastUsed: "Hace 3 días",
-      group: "Entretenimiento",
-    },
-  ];
-  const compromisedPasswords = 3;
-  const weakPasswords = 5;
-  const totalPasswords = 50;
-  const totalGroups = 8;
-  const sharedPasswords = 15;
+  const loadDashboardData = async () => {
+    setIsLoading(true);
+    try {
+      const [userStats, passwordStats, groupStats, recentPasswordsData] =
+        await Promise.all([
+          getUserSecurityScore(),
+          getPasswordCount(),
+          getGroupCount(),
+          getLastUpdated(),
+        ]);
+
+      if (userStats?.success) {
+        const scoreRaw = Number(userStats?.data?.securityScore || 0);
+        const score = parseFloat(scoreRaw.toFixed(2));
+        setSecurityScore(score);
+      }
+
+      if (passwordStats?.success) {
+        const count = Number(passwordStats?.data?.count || 0);
+        setPasswordCount(count);
+      }
+
+      if (groupStats?.success) {
+        const count = Number(groupStats?.data?.count || 0);
+        setGroupCount(count);
+      }
+
+      if (recentPasswordsData?.success) {
+        setRecentPasswords(recentPasswordsData?.data?.passwords || []);
+      }
+    } catch (error) {
+      console.error("An error occurred loading dashboard counters:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const handleFeatNotAvailable = () => {
+    toast("Feature Unavailable", {
+      description: "We're working on it! This feature will be available soon.",
+    });
+  };
 
   return (
     <div className="container mx-auto space-y-8 px-4 py-8 max-w-8xl">
@@ -87,11 +114,35 @@ export default function DashboardPage() {
             <Lock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{securityScore}%</div>
-            <Progress value={securityScore} className="h-2" />
-            <p className="text-xs text-muted-foreground mt-2">
-              +5% desde el último mes
-            </p>
+            <div className="text-2xl font-bold">
+              {isLoading ? (
+                <Skeleton className="h-8 w-20" />
+              ) : (
+                <AnimatedCounter
+                  value={securityScore}
+                  suffix="%"
+                  decimals={2}
+                />
+              )}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Grupos Activos
+            </CardTitle>
+            <Share2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {isLoading ? (
+                <Skeleton className="h-8 w-12" />
+              ) : (
+                <AnimatedCounter value={groupCount} />
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground"></p>
           </CardContent>
         </Card>
         <Card>
@@ -102,10 +153,14 @@ export default function DashboardPage() {
             <Key className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalPasswords}</div>
-            <p className="text-xs text-muted-foreground">
-              {sharedPasswords} compartidas en {totalGroups} grupos
-            </p>
+            <div className="text-2xl font-bold">
+              {isLoading ? (
+                <Skeleton className="h-8 w-12" />
+              ) : (
+                <AnimatedCounter value={passwordCount} />
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground"></p>
           </CardContent>
         </Card>
         <Card>
@@ -117,25 +172,8 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {compromisedPasswords + weakPasswords}
+              {isLoading ? <Skeleton className="h-8 w-12" /> : 0}
             </div>
-            <p className="text-xs text-muted-foreground">
-              {compromisedPasswords} comprometidas, {weakPasswords} débiles
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Grupos Activos
-            </CardTitle>
-            <Share2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalGroups}</div>
-            <p className="text-xs text-muted-foreground">
-              {sharedPasswords} contraseñas compartidas
-            </p>
           </CardContent>
         </Card>
       </div>
@@ -144,9 +182,7 @@ export default function DashboardPage() {
         <Card className="col-span-1">
           <CardHeader>
             <CardTitle>Contraseñas Recientes</CardTitle>
-            <CardDescription>
-              Últimas contraseñas utilizadas o actualizadas
-            </CardDescription>
+            <CardDescription>Últimas contraseñas actualizadas</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
@@ -154,23 +190,57 @@ export default function DashboardPage() {
                 <TableRow>
                   <TableHead>Servicio</TableHead>
                   <TableHead>Usuario</TableHead>
-                  <TableHead>Último Uso</TableHead>
-                  <TableHead>Grupo</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Ultima actualizacion</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {recentPasswords.map((password) => (
-                  <TableRow key={password.id}>
-                    <TableCell className="font-medium">
-                      {password.service}
-                    </TableCell>
-                    <TableCell>{password.username}</TableCell>
-                    <TableCell>{password.lastUsed}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary">{password.group}</Badge>
+                {isLoading ? (
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <TableRow key={index}>
+                      <TableCell>
+                        <Skeleton className="h-4 w-32" />{" "}
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-24" />{" "}
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-20" />{" "}
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-24" />{" "}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : recentPasswords.length > 0 ? (
+                  recentPasswords.map((password) => (
+                    <TableRow key={password.id}>
+                      <TableCell className="font-medium">
+                        {password.service}
+                      </TableCell>
+                      <TableCell>{password.username}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={password.isShared ? "success" : "outline"}
+                        >
+                          {password.isShared ? "Compartida" : "Sin compartir"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {formatRelativeTime(password.updatedAt)}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={4}
+                      className="text-center text-muted-foreground"
+                    >
+                      No hay contraseñas recientes.
                     </TableCell>
                   </TableRow>
-                ))}
+                )}
               </TableBody>
             </Table>
           </CardContent>
@@ -191,13 +261,12 @@ export default function DashboardPage() {
                     Actualizar contraseñas débiles
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Tienes {weakPasswords} contraseñas que necesitan ser
-                    fortalecidas
+                    Tienes 0 contraseñas que necesitan ser mejoradas
                   </p>
                 </div>
-                <Link href="/passwords?filter=weak">
-                  <Button size="sm">Revisar</Button>
-                </Link>
+                <Button size="sm" onClick={handleFeatNotAvailable}>
+                  Revisar
+                </Button>
               </div>
               <div className="flex justify-between items-center">
                 <div className="space-y-1">
@@ -205,13 +274,12 @@ export default function DashboardPage() {
                     Verificar contraseñas comprometidas
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {compromisedPasswords} contraseñas pueden haber sido
-                    expuestas
+                    0 contraseñas pueden haber sido expuestas
                   </p>
                 </div>
-                <Link href="/comprometidas">
-                  <Button size="sm">Verificar</Button>
-                </Link>
+                <Button size="sm" onClick={handleFeatNotAvailable}>
+                  Verificar
+                </Button>
               </div>
               <div className="flex justify-between items-center">
                 <div className="space-y-1">
@@ -222,12 +290,10 @@ export default function DashboardPage() {
                     Comparte contraseñas de forma segura con tu equipo
                   </p>
                 </div>
-                <Link href="/grupos">
-                  <Button size="sm">
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Invitar
-                  </Button>
-                </Link>
+                <Button size="sm" onClick={handleFeatNotAvailable}>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Invitar
+                </Button>
               </div>
               <div className="flex justify-between items-center">
                 <div className="space-y-1">
@@ -235,10 +301,14 @@ export default function DashboardPage() {
                     Actualizar estado de seguridad
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Última actualización: hace 3 días
+                    Última actualización: hace 0 días
                   </p>
                 </div>
-                <Button size="sm" variant="outline">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleFeatNotAvailable}
+                >
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Actualizar
                 </Button>

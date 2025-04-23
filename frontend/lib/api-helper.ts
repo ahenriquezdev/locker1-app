@@ -24,6 +24,7 @@ export class SessionExpiredError extends Error {
   constructor(message = "Your session has expired") {
     super(message);
     this.name = "SessionExpiredError";
+    // this.isSessionExpired = true;
   }
 }
 
@@ -38,7 +39,7 @@ async function getAccessToken(): Promise<string | undefined> {
     const session = await getSessionUser();
     return session?.accessToken;
   } catch (err) {
-    console.error("Failed to get session:", err);
+    console.error("Failed to get session user data:", err);
     return undefined;
   }
 }
@@ -55,21 +56,23 @@ function buildHeaders(
 }
 
 function handleAxiosError(error: AxiosError): Error {
-  const status = error.response?.status;
-  const message =
-    (error.response?.data as any)?.message?.toLowerCase?.() ||
-    error.message.toLowerCase();
+  if (error.response) {
+    const status = error.response.status;
 
-  if (
-    status &&
-    knownLogoutTriggers.some((trigger) => message.includes(trigger))
-  ) {
-    return new SessionExpiredError(
-      "Your session has expired. Redirecting to login...",
-    );
+    const responseMessage =
+      (error.response.data as any)?.message?.toLowerCase?.() || "";
+
+    if (
+      knownLogoutTriggers.some((trigger) => responseMessage.includes(trigger))
+    ) {
+      return new SessionExpiredError(
+        "Your session has expired. Please log in again.",
+      );
+    }
+    const errorMessage = responseMessage || `API Error: Status ${status}`;
+    return new Error(errorMessage);
   }
-
-  return new Error(message || "Unknown error while calling the API.");
+  return new Error(error.message || "Network error or request failed.");
 }
 
 export async function apiRequest<T>(
@@ -97,20 +100,26 @@ export async function apiRequest<T>(
     if (axios.isAxiosError(error)) {
       const isRecoverable = recoverableErrorCodes.includes(error.code ?? "");
       const canRetry =
-        retries < MAX_RETRIES && (config.safeRetry || method !== "POST");
+        retries < MAX_RETRIES &&
+        (config.safeRetry ||
+          method === "GET" ||
+          method === "DELETE" ||
+          method === "PUT");
 
       if (isRecoverable && canRetry) {
-        console.warn(`Retrying [${method}] ${url}. Attempt #${retries + 1}`);
+        console.warn(
+          `Retrying [${method}] ${url}. Attempt #${retries + 1} due to error: ${error.code}`,
+        );
         await new Promise((resolve) =>
           setTimeout(resolve, getExponentialBackoffDelay(retries)),
         );
         return apiRequest<T>(method, url, data, config, retries + 1);
       }
-
       return Promise.reject(handleAxiosError(error));
     }
-
-    return Promise.reject(new Error("Unexpected API error"));
+    return Promise.reject(
+      new Error("An unexpected error occurred during the API request."),
+    );
   }
 }
 

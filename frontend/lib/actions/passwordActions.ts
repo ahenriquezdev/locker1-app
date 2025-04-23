@@ -228,6 +228,58 @@ export async function getPasswordById(
   }
 }
 
+export async function getPasswordCount(): Promise<ApiResponse.Response> {
+  try {
+    const apiResponse = await apiGet<ApiResponse.Response>(
+      apiRoutes.remote.password.getCount,
+      { safeRetry: true },
+    );
+
+    if (!apiResponse || !apiResponse.success) {
+      return {
+        success: false,
+        message: apiResponse.message || "Failed to fetch password count.",
+        display: true,
+      };
+    }
+
+    return {
+      success: true,
+      message: apiResponse.message || "Password count fetched successfully.",
+      data: apiResponse.data,
+      display: true,
+    };
+  } catch (error: any) {
+    return handleError(error, "Error fetching password count:");
+  }
+}
+
+export async function getLastUpdated(): Promise<ApiResponse.Response> {
+  try {
+    const apiResponse = await apiGet<ApiResponse.Response>(
+      apiRoutes.remote.password.getLastUpdated,
+      { safeRetry: true },
+    );
+
+    if (!apiResponse || !apiResponse.success) {
+      return {
+        success: false,
+        message: apiResponse.message || "Failed to fetch recent passwords.",
+        display: true,
+      };
+    }
+
+    return {
+      success: true,
+      message: apiResponse.message || "Recent passwords fetched successfully.",
+      data: apiResponse.data,
+      display: true,
+    };
+  } catch (error: any) {
+    return handleError(error, "Error fetching recent passwords:");
+  }
+}
+
 function handleError(
   error: any,
   customMessage: string = "An unexpected error occurred. Please try again later.",

@@ -24,21 +24,21 @@ export default function CategorySelector() {
           <Button
             variant="ghost"
             className="w-full justify-start"
-            onClick={() => handleCategoryChange("propias")}
+            onClick={() => handleCategoryChange("own-all")}
           >
             <span>Todas las claves propias</span>
           </Button>
           <Button
             variant="ghost"
             className="w-full justify-start"
-            onClick={() => handleCategoryChange("sin-compartir")}
+            onClick={() => handleCategoryChange("own-not-shared")}
           >
             <span>Sin compartir</span>
           </Button>
           <Button
             variant="ghost"
             className="w-full justify-start"
-            onClick={() => handleCategoryChange("compartidas")}
+            onClick={() => handleCategoryChange("own-shared")}
           >
             <span>Compartidas con grupos</span>
           </Button>
@@ -49,7 +49,7 @@ export default function CategorySelector() {
           <Button
             variant="ghost"
             className="w-full justify-start"
-            onClick={() => handleCategoryChange("externas")}
+            onClick={() => handleCategoryChange("shared-with-me")}
           >
             <span>Compartidas por otros grupos</span>
           </Button>
