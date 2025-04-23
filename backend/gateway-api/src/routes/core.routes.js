@@ -171,4 +171,142 @@ router.delete(
   },
 );
 
+// [OK] getPasswordCount
+router.get(
+  apiRoutes.coreApi.local.password.getCount,
+  authMiddleware,
+  async (req, res) => {
+    try {
+      const response = await fetch(apiRoutes.coreApi.remote.password.getCount, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-Id": req.user.userId,
+          Authorization: `Bearer ${req.user.token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        return res.status(response.status).send(data);
+      }
+      res.status(response.status).send(data);
+    } catch (error) {
+      res.sendError(500, "GW: Error getting password count", error);
+    }
+  },
+);
+
+// [] get last updated password
+router.get(
+  apiRoutes.coreApi.local.password.getLastUpdated,
+  authMiddleware,
+  async (req, res) => {
+    try {
+      const response = await fetch(
+        apiRoutes.coreApi.remote.password.getLastUpdated,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-Id": req.user.userId,
+            Authorization: `Bearer ${req.user.token}`,
+          },
+        },
+      );
+
+      const data = await response.json();
+      if (!response.ok) {
+        return res.status(response.status).send(data);
+      }
+      res.status(response.status).send(data);
+    } catch (error) {
+      res.sendError(500, "GW: Error getting last updated password", error);
+    }
+  },
+);
+
+// [OK] get groups count
+router.get(
+  apiRoutes.coreApi.local.group.getCount,
+  authMiddleware,
+  async (req, res) => {
+    try {
+      const response = await fetch(apiRoutes.coreApi.remote.group.getCount, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-Id": req.user.userId,
+          Authorization: `Bearer ${req.user.token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        return res.status(response.status).send(data);
+      }
+      res.status(response.status).send(data);
+    } catch (error) {
+      res.sendError(500, "GW: Error getting groups count", error);
+    }
+  },
+);
+
+// [OK] get all groups
+router.get(
+  apiRoutes.coreApi.local.group.getAll,
+  authMiddleware,
+  async (req, res) => {
+    try {
+      const response = await fetch(apiRoutes.coreApi.remote.group.getAll, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-Id": req.user.userId,
+          Authorization: `Bearer ${req.user.token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        return res.status(response.status).send(data);
+      }
+      res.status(response.status).send(data);
+    } catch (error) {
+      res.sendError(500, "GW: Error getting groups", error);
+    }
+  },
+);
+
+// [OK] get user security score
+router.get(
+  apiRoutes.coreApi.local.user.getSecurityScore,
+  authMiddleware,
+  async (req, res) => {
+    try {
+      const response = await fetch(
+        apiRoutes.coreApi.remote.user.getSecurityScore,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-Id": req.user.userId,
+            Authorization: `Bearer ${req.user.token}`,
+          },
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return res.status(response.status).send(data);
+      }
+
+      res.status(response.status).send(data);
+    } catch (error) {
+      res.sendError(500, "GW: Error getting user security score", error);
+    }
+  },
+);
+
 module.exports = router;

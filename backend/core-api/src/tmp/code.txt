@@ -110,7 +110,7 @@ router.post("/shared-key", async (req, res) => {
     if (!userId) {
       return res.status(400).json({
         status: "error",
-        message: "User ID is required",
+        message: "Users ID is required",
       });
     }
 

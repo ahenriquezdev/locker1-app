@@ -24,6 +24,7 @@ frontend/dist/
 frontend/.cache/
 frontend/.next/
 frontend/out/
+frontend/node_modules/
 
 # Backend (Node.js)
 backend/api-auth/node_modules/

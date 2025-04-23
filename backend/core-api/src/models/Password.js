@@ -192,6 +192,40 @@ passwordSchema.statics.getByCategory = async function (
   return { results: paginated, total: allResults.length };
 };
 
+passwordSchema.statics.getPasswordScoreAverage = async function (userId) {
+  const objectId = new mongoose.Types.ObjectId(userId);
+
+  const results = await this.aggregate([
+    { $match: { userId: objectId } },
+    {
+      $group: {
+        _id: null,
+        averageScore: { $avg: "$score" },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        averageScore: 1,
+      },
+    },
+  ]);
+
+  const average = results.length > 0 ? results[0].averageScore : 0;
+
+  return Math.max(0, Math.min(100, average));
+};
+
+// getCount
+passwordSchema.statics.getCount = async function (userId) {
+  return this.countDocuments({ userId });
+};
+
+// getLast10Updated
+passwordSchema.statics.getLastUpdated = async function (userId) {
+  return this.find({ userId }).sort({ updatedAt: -1 }).limit(10);
+};
+
 const Password = mongoose.model("Password", passwordSchema);
 
 module.exports = Password;

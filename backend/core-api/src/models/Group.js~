@@ -27,8 +27,10 @@ groupSchema.statics.getCount = async function (userId) {
   return this.countDocuments({ ownerId: userId });
 };
 
+// get all groups where the user is either owner (role admin) or member (role member)
 groupSchema.statics.getAll = async function (userId) {
   const userObjectId = new mongoose.Types.ObjectId(userId);
+
   const results = await this.aggregate([
     {
       $lookup: {

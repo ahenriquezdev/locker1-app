@@ -63,7 +63,7 @@ router.post(apiRoutes.auth.register, async (req, res) => {
       token: authToken._id,
     });
   } catch (error) {
-    return res.sendError(500, "AU: User registration failed", error);
+    res.sendError(500, "AU: User registration failed", error);
   }
 });
 
@@ -109,7 +109,7 @@ router.get(apiRoutes.auth.activate, async (req, res) => {
     await tokenEntry.deleteOne();
     res.sendSuccess(200, "Account activated successfully");
   } catch (error) {
-    return res.sendError(500, "AU: Account activation failed", error);
+    res.sendError(500, "AU: Account activation failed", error);
   }
 });
 
@@ -180,7 +180,7 @@ router.get(apiRoutes.auth.me, authMiddleware, async (req, res) => {
       user: user.getPublicFields(),
     });
   } catch (error) {
-    return res.sendError(500, "AU: Get user failed", error);
+    res.sendError(500, "AU: Get user failed", error);
   }
 });
 
@@ -220,7 +220,7 @@ router.post(apiRoutes.auth.validateToken, async (req, res) => {
     if (error.statusCode && error.message) {
       return res.sendError(error.statusCode, error.message);
     }
-    return res.sendError(500, "AU: Token validation failed", error);
+    res.sendError(500, "AU: Token validation failed", error);
   }
 });
 

@@ -52,6 +52,15 @@ const apiRoutes = {
           getById: "/password/:id",
           create: "/password",
           updateOrDelete: "/password/:id",
+          getCount: "/passwords/count",
+          getLastUpdated: "/passwords/last-updated",
+        },
+        group: {
+          getCount: "/groups/count",
+          getAll: "/groups",
+        },
+        user: {
+          getSecurityScore: "/user/security-score", // get and update
         },
       },
       remote: {
@@ -63,6 +72,15 @@ const apiRoutes = {
           getById: `${coreApiRemoteUrl}/password/:id`,
           create: `${coreApiRemoteUrl}/password`,
           updateOrDelete: `${coreApiRemoteUrl}/password/:id`,
+          getCount: `${coreApiRemoteUrl}/passwords/count`,
+          getLastUpdated: `${coreApiRemoteUrl}/passwords/last-updated`,
+        },
+        group: {
+          getCount: `${coreApiRemoteUrl}/groups/count`,
+          getAll: `${coreApiRemoteUrl}/groups`,
+        },
+        user: {
+          getSecurityScore: `${coreApiRemoteUrl}/user/security-score`, // get and update
         },
       },
     };

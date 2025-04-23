@@ -3,8 +3,10 @@ const mongoose = require("mongoose");
 const connectDB = async () => {
   try {
     const mongooseOptions = {
-      connectTimeoutMS: 10000, // Give up initial connection after 10 seconds
-      socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+      serverSelectionTimeoutMS: 5000,
+      maxPoolSize: 10,
+      minPoolSize: 0,
+      maxIdleTimeMS: 30000,
     };
 
     await mongoose.connect(process.env.MONGODB_URI, mongooseOptions);

@@ -121,4 +121,65 @@ router.get(
   },
 );
 
+// [] get user security score
+
+router.get(
+  apiRoutes.authApi.local.user.securityScore,
+  authMiddleware,
+  async (req, res) => {
+    try {
+      const response = await fetch(
+        apiRoutes.authApi.remote.user.securityScore,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-Id": req.user.userId,
+            Authorization: `Bearer ${req.user.token}`,
+          },
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return res.status(response.status).send(data);
+      }
+
+      res.status(response.status).send(data);
+    } catch (error) {
+      return res.sendError(500, "GW: Error getting user security score", error);
+    }
+  },
+);
+
+// [] update user security score
+// router.put(
+//   apiRoutes.authApi.local.user.securityScore,
+//   authMiddleware,
+//   async (req, res) => {
+//     try {
+//       const response = await fetch(apiRoutes.authApi.remote.user.securityScore, {
+//         method: "POST",
+//         headers: {
+//           "Content-Type": "application/json",
+//           "X-User-Id": req.user.userId,
+//           Authorization: `Bearer ${req.user.token}`,
+//         },
+//         body: JSON.stringify(req.body),
+//       });
+//
+//       const data = await response.json();
+//
+//       if (!response.ok) {
+//         return res.status(response.status).send(data);
+//       }
+//
+//       res.status(response.status).send(data);
+//     } catch (error) {
+//       res.sendError(500, "GW: Error updating user security score", error);
+//     }
+//   },
+// );
+
 module.exports = router;

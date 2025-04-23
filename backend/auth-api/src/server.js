@@ -5,10 +5,12 @@ const swaggerUi = require("swagger-ui-express");
 const YAML = require("yamljs");
 const path = require("path");
 const connectDB = require("./config/database");
+const mongoose = require("mongoose");
 
 const authRoutes = require("./routes/auth");
 const apiRoutes = require("./config/endpoints");
 const responseHandler = require("./middleware/responseHandler");
+const checkDbConnection = require("./middleware/checkDbConnection");
 
 const app = express();
 const PORT = process.env.PORT || 4001;
@@ -30,6 +32,9 @@ connectDB()
     process.exit(1);
   });
 
+// DB Connection Middleware
+app.use(apiRoutes.base, checkDbConnection);
+
 // Mount routes
 app.use(apiRoutes.base, authRoutes);
 
@@ -38,6 +43,9 @@ app.get(`${apiRoutes.base}${apiRoutes.health}`, (req, res) => {
     status: "healthy",
     timestamp: new Date().toISOString(),
     service: "auth-api",
+    dbStatus:
+      mongoose.connection.readyState === 1 ? "connected" : "disconnected",
+    dbReadyState: mongoose.connection.readyState,
   });
 });
 
