@@ -1,0 +1,907 @@
+openapi: 3.0.0
+info:
+  title: Locker1 Core API
+  description: API for managing passwords, groups, and sharing functionality
+  version: 1.0.0
+  contact:
+    name: Sebastian Aliaga
+servers:
+  - url: http://localhost:3002
+    description: Development server
+
+components:
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: error
+              message:
+                type: string
+                example: Invalid request parameters
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: error
+              message:
+                type: string
+                example: Invalid or expired token
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: error
+              message:
+                type: string
+                example: Resource not found
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        message:
+          type: string
+    HealthCheck:
+      type: object
+      properties:
+        status:
+          type: string
+          example: healthy
+        timestamp:
+          type: string
+          format: date-time
+        service:
+          type: string
+          example: core-api
+    PasswordCreate:
+      type: object
+      required:
+        - title
+        - username
+        - password
+      properties:
+        title:
+          type: string
+          example: Gmail Account
+        username:
+          type: string
+          example: user@example.com
+        password:
+          type: string
+          example: MySecurePassword123!
+        url:
+          type: string
+          example: https://gmail.com
+        notes:
+          type: string
+          example: Work email account
+        category:
+          type: string
+          example: Email
+        favorite:
+          type: boolean
+          example: false
+    PasswordResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 60d5ecb74e8e3a1234567890
+        title:
+          type: string
+          example: Gmail Account
+        username:
+          type: string
+          example: user@example.com
+        url:
+          type: string
+          example: https://gmail.com
+        notes:
+          type: string
+          example: Work email account
+        category:
+          type: string
+          example: Email
+        favorite:
+          type: boolean
+          example: false
+        strength:
+          type: object
+          properties:
+            score:
+              type: number
+              example: 3
+            feedback:
+              type: string
+              example: This is a good password.
+        lastModified:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+    GroupCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          example: Development Team
+        description:
+          type: string
+          example: Team for development projects
+    GroupResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 60d5ecb74e8e3a1234567891
+        name:
+          type: string
+          example: Development Team
+        description:
+          type: string
+          example: Team for development projects
+        owner:
+          type: string
+          example: 60d5ecb74e8e3a1234567892
+        members:
+          type: array
+          items:
+            type: object
+            properties:
+              userId:
+                type: string
+                example: 60d5ecb74e8e3a1234567893
+              role:
+                type: string
+                enum: [admin, member]
+                example: member
+              addedAt:
+                type: string
+                format: date-time
+        sharedPasswords:
+          type: array
+          items:
+            type: string
+          example: ["60d5ecb74e8e3a1234567894"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    GroupUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          example: Updated Team Name
+        description:
+          type: string
+          example: Updated team description
+    GroupMemberAdd:
+      type: object
+      required:
+        - userId
+      properties:
+        userId:
+          type: string
+          example: 60d5ecb74e8e3a1234567893
+        role:
+          type: string
+          enum: [admin, member]
+          example: member
+    PasswordShare:
+      type: object
+      required:
+        - passwordId
+      properties:
+        passwordId:
+          type: string
+          example: 60d5ecb74e8e3a1234567894
+    PasswordMetadata:
+      type: object
+      properties:
+        _id:
+          type: string
+        userId:
+          type: string
+        title:
+          type: string
+        username:
+          type: string
+        url:
+          type: string
+        notes:
+          type: string
+        category:
+          type: string
+        favorite:
+          type: boolean
+        strength:
+          type: object
+          properties:
+            score:
+              type: number
+            feedback:
+              type: string
+        sharedWith:
+          type: array
+          items:
+            type: string
+        lastModified:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Security
+    description: Security and password analysis endpoints
+  - name: Passwords
+    description: Password management endpoints
+  - name: Groups
+    description: Group management endpoints
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check endpoint
+      description: Returns the health status of the API
+      responses:
+        '200':
+          description: Successful health check
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheck'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /passwords:
+    post:
+      tags:
+        - Passwords
+      summary: Create a new password
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - password
+              properties:
+                title:
+                  type: string
+                  example: "Gmail Account"
+                username:
+                  type: string
+                  example: "user@example.com"
+                password:
+                  type: string
+                  example: "strongPassword123!"
+                url:
+                  type: string
+                  example: "https://gmail.com"
+                notes:
+                  type: string
+                  example: "Work email account"
+                category:
+                  type: string
+                  example: "Email"
+                favorite:
+                  type: boolean
+                  example: false
+      responses:
+        '201':
+          description: Password created successfully with breach check results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      password:
+                        $ref: '#/components/schemas/PasswordMetadata'
+                      breachCheck:
+                        type: object
+                        properties:
+                          isCompromised:
+                            type: boolean
+                            example: false
+                          timesExposed:
+                            type: integer
+                            example: 0
+                          message:
+                            type: string
+                            example: "This password has not been found in any known data breaches"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    
+    get:
+      tags:
+        - Passwords
+      summary: Get all passwords (metadata only)
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of passwords retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      passwords:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/PasswordResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /passwords/{id}:
+    get:
+      tags:
+        - Passwords
+      summary: Get a single password with decrypted value
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Password retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      password:
+                        $ref: '#/components/schemas/PasswordResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Passwords
+      summary: Update a password
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordUpdate'
+      responses:
+        '200':
+          description: Password updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      password:
+                        $ref: '#/components/schemas/PasswordResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Passwords
+      summary: Delete a password
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Password deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                    example: Password deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /passwords/security/score:
+    get:
+      tags:
+        - Security
+      summary: Get security score
+      description: Calculate overall security score for user's passwords
+      operationId: getSecurityScore
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      score:
+                        type: number
+                        example: 85
+                      totalPasswords:
+                        type: integer
+                        example: 10
+                      recommendations:
+                        type: array
+                        items:
+                          type: string
+        '500':
+          description: Internal Server Error
+
+  /passwords/security/check:
+    post:
+      tags:
+        - Security
+      summary: Check password breach
+      description: Check if a password has been exposed in known data breaches
+      operationId: checkPasswordBreach
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                password:
+                  type: string
+                  example: mypassword123
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      isCompromised:
+                        type: boolean
+                      timesExposed:
+                        type: integer
+                      message:
+                        type: string
+        '400':
+          description: Bad Request - Password not provided
+        '401':
+          description: Unauthorized - Invalid token
+        '500':
+          description: Internal Server Error
+
+  /groups:
+    post:
+      tags:
+        - Groups
+      summary: Create a new group
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GroupCreate'
+      responses:
+        '201':
+          description: Group created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      group:
+                        $ref: '#/components/schemas/GroupResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    get:
+      tags:
+        - Groups
+      summary: Get all groups where user is owner or member
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of groups retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      groups:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/GroupResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /groups/{id}:
+    get:
+      tags:
+        - Groups
+      summary: Get a single group
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Group retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      group:
+                        $ref: '#/components/schemas/GroupResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Groups
+      summary: Update group details
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GroupUpdate'
+      responses:
+        '200':
+          description: Group updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      group:
+                        $ref: '#/components/schemas/GroupResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Groups
+      summary: Delete a group
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Group deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                    example: Group deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /groups/{id}/members:
+    post:
+      tags:
+        - Groups
+      summary: Add member to group
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GroupMemberAdd'
+      responses:
+        '200':
+          description: Member added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      group:
+                        $ref: '#/components/schemas/GroupResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /groups/{id}/members/{userId}:
+    delete:
+      tags:
+        - Groups
+      summary: Remove member from group
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Member removed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      group:
+                        $ref: '#/components/schemas/GroupResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /groups/{id}/share:
+    post:
+      tags:
+        - Groups
+      summary: Share password with group
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordShare'
+      responses:
+        '200':
+          description: Password shared successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                    example: Password shared successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /groups/{id}/share/{passwordId}:
+    delete:
+      tags:
+        - Groups
+      summary: Unshare password from group
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: passwordId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Password unshared successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  message:
+                    type: string
+                    example: Password unshared successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound' 
